@@ -1,4 +1,193 @@
 products:
-  glc_land_cover:
-    status: planned
-    notes: Add the GEE collection and extraction settings after the notebook code is moved here
+  precip:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: total_precipitation_sum
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: m
+    output_units: mm
+    scale_factor: 1000
+    offset: 0
+    daily_to_monthly: sum
+    daily_to_annual: sum
+    output_temporal_resolution:
+      - monthly
+      - annual
+    reducer: mean
+    output_name: precip_mm
+    notes: Higher spatial and temporal resolution replacement for GPCP monthly precipitation
+
+  temp:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: temperature_2m
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: K
+    output_units: degC
+    scale_factor: 1
+    offset: -273.15
+    daily_to_monthly: mean
+    daily_to_annual: mean
+    output_temporal_resolution:
+      - monthly
+      - annual
+    reducer: mean
+    output_name: temp_degC
+    notes: Daily 2 m air temperature summarized to monthly and annual watershed means
+
+  evapotrans:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: total_evaporation_sum
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: m
+    output_units: mm
+    scale_factor: -1000
+    offset: 0
+    daily_to_monthly: sum
+    daily_to_annual: sum
+    output_temporal_resolution:
+      - monthly
+      - annual
+    reducer: mean
+    output_name: evapotrans_mm
+    notes: ERA5-Land evaporation is negative for upward water flux, so the scale factor flips sign and converts m to mm
+
+  snow_cover:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: snow_cover
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: fraction
+    output_units: fraction
+    scale_factor: 1
+    offset: 0
+    daily_to_monthly: mean
+    daily_to_annual: max
+    output_temporal_resolution:
+      - monthly
+      - annual
+    reducer: mean
+    output_name: snow_cover_fraction
+    notes: Use ERA5-Land snow_cover as the snow variable; do not create a separate snow-day count for the GEE workflow
+
+  npp:
+    status: selected
+    source: MODIS annual NPP
+    gee_id: MODIS/061/MOD17A3HGF
+    band: Npp
+    type: continuous
+    source_temporal_resolution: annual
+    selected_spatial_resolution_m: 500
+    native_units: kgC_m2_year_scaled
+    output_units: kgC_m2_year
+    output_temporal_resolution:
+      - annual
+    scale_factor: 0.0001
+    offset: 0
+    reducer: mean
+    output_name: npp_kgC_m2_year
+    notes: Annual MODIS NPP remains the selected GEE product
+
+  greenup_day:
+    status: selected
+    source: MODIS land cover dynamics
+    gee_id: MODIS/061/MCD12Q2
+    band: Greenup_1
+    type: phenology
+    source_temporal_resolution: annual
+    selected_spatial_resolution_m: 500
+    output_units: day_of_year
+    output_temporal_resolution:
+      - annual
+    reducer: mean
+    output_name: greenup_day
+    notes: Needs date-to-day-of-year handling before final export
+
+  land_cover:
+    status: selected
+    source: GLC_FCS30D annual land cover
+    gee_id: projects/sat-io/open-datasets/GLC-FCS30D/annual
+    type: class_fraction
+    source_temporal_resolution: annual
+    selected_spatial_resolution_m: 30
+    output_units: percent
+    output_temporal_resolution:
+      - annual
+    reducer: class_fraction
+    output_name: land_cover_percent
+    notes: Selected LULC product is GLC_FCS30D annual land cover; use the 30 m annual classes through 2022 listed in the GEE Community Catalog
+
+  elevation:
+    status: selected
+    source: SRTM elevation
+    gee_id: USGS/SRTMGL1_003
+    band: elevation
+    type: continuous
+    source_temporal_resolution: static
+    selected_spatial_resolution_m: 30
+    native_units: m
+    output_units: m
+    output_temporal_resolution:
+      - static
+    scale_factor: 1
+    offset: 0
+    reducer: mean
+    output_name: elevation_m
+    notes: Static watershed mean elevation
+
+  permafrost:
+    status: needs_asset
+    source: Existing permafrost probability raster
+    gee_id: REPLACE_WITH_UPLOADED_PERMAFROST_ASSET
+    band: permafrost_probability
+    type: continuous
+    source_temporal_resolution: static
+    output_units: probability
+    output_temporal_resolution:
+      - static
+    scale_factor: 1
+    offset: 0
+    reducer: mean
+    output_name: permafrost_probability
+    notes: Use uploaded source raster unless a better global GEE product is selected
+
+  lithology:
+    status: needs_review
+    source: GLiM lithology
+    gee_id: projects/sat-io/open-datasets/GLiM
+    type: class_fraction
+    source_temporal_resolution: static
+    output_units: percent
+    output_temporal_resolution:
+      - static
+    reducer: class_fraction
+    output_name: lithology_percent
+    notes: Confirm class scheme before extraction
+
+  soil_class:
+    status: optional
+    source: OpenLandMap USDA soil taxonomy great groups
+    gee_id: OpenLandMap/SOL/SOL_GRTGROUP_USDA-SOILTAX_C/v01
+    band: grtgroup
+    type: class_fraction
+    source_temporal_resolution: static
+    selected_spatial_resolution_m: 250
+    output_units: percent
+    output_temporal_resolution:
+      - static
+    reducer: class_fraction
+    output_name: soil_class_percent
+    notes: Keep optional because the old soil-order output has not been very useful

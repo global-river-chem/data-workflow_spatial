@@ -6,4 +6,5 @@ __all__ = [
     "datasets",
     "export",
     "extraction",
+    "runs",
 ]

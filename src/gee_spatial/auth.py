@@ -11,11 +11,19 @@ def initialize(project: Optional[str] = None):
     import ee
 
     kwargs = {"project": project} if project else {}
+    auth_kwargs = {}
+
+    try:
+        import google.colab  # type: ignore  # noqa: F401
+
+        auth_kwargs["auth_mode"] = "colab"
+    except ImportError:
+        pass
 
     try:
         ee.Initialize(**kwargs)
     except Exception:
-        ee.Authenticate()
+        ee.Authenticate(**auth_kwargs)
         ee.Initialize(**kwargs)
 
     return ee

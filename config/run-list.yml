@@ -1,0 +1,23 @@
+site_groups:
+  column: run_group
+  default: batch_001
+  start_with_groups: true
+  suggested_sites_per_group: 25-50
+  notes: Put very large watersheds in smaller groups before launching full exports
+
+outputs:
+  current_timing:
+    - monthly
+    - annual
+    - static
+  later_timing:
+    - daily
+    - weekly
+  notes: Daily or weekly outputs can be added later from daily source products when needed
+
+pilot:
+  product: precip
+  year: 2020
+  month:
+  run_group: batch_001
+  launch_export: true

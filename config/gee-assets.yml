@@ -2,8 +2,20 @@ earth_engine:
   project: silica-synthesis
 
 watersheds:
-  asset_id: REPLACE_WITH_GEE_WATERSHED_ASSET
+  asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_20260629
   id_column: site_id
+  run_group_column: run_group
+  upload_status: needs_upload
+  upload_file: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/silica_gee_watersheds_20260629.geojson
+  geometry_check: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/watershed-geometry-check_20260629.csv
 
 exports:
-  drive_folder: GEE_spatial_exports
+  drive_folder: Google-Earth-Engine
+  drive_folder_id: 1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX
+  drive_folder_url: https://drive.google.com/drive/folders/1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX?usp=share_link
+
+data_release:
+  release: 3
+  drive_folder: data-release-3
+  drive_folder_id: 1zF_Itljwn0bUWSTHEkwkMDyNOiKPXRF1
+  drive_folder_url: https://drive.google.com/drive/folders/1zF_Itljwn0bUWSTHEkwkMDyNOiKPXRF1?usp=share_link

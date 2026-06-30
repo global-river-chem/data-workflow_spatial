@@ -10,10 +10,20 @@ def product_names(config: Dict[str, Any]) -> List[str]:
     return sorted(products.keys())
 
 
-def planned_products(config: Dict[str, Any]) -> List[str]:
+def products_by_status(config: Dict[str, Any], status: str) -> List[str]:
     products = config.get("products") or {}
     return sorted(
         name
         for name, settings in products.items()
-        if (settings or {}).get("status") == "planned"
+        if (settings or {}).get("status") == status
+    )
+
+
+def continuous_products(config: Dict[str, Any], status: str = "selected") -> List[str]:
+    products = config.get("products") or {}
+    return sorted(
+        name
+        for name, settings in products.items()
+        if (settings or {}).get("status") == status
+        and (settings or {}).get("type") == "continuous"
     )
