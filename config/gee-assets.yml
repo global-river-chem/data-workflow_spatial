@@ -1,0 +1,9 @@
+earth_engine:
+  project: silica-synthesis
+
+watersheds:
+  asset_id: REPLACE_WITH_GEE_WATERSHED_ASSET
+  id_column: site_id
+
+exports:
+  drive_folder: GEE_spatial_exports

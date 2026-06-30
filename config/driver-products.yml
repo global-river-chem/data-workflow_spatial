@@ -1,0 +1,4 @@
+products:
+  glc_land_cover:
+    status: planned
+    notes: Add the GEE collection and extraction settings after the notebook code is moved here
