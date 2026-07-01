@@ -5,6 +5,22 @@ from __future__ import annotations
 from typing import Optional
 
 
+def choose_property_name(watersheds, preferred: str, alternatives: Optional[list[str]] = None) -> str:
+    """Use the expected column name, or a known Earth Engine upload-shortened name"""
+
+    candidates = [preferred] + list(alternatives or [])
+    property_names = set(watersheds.first().propertyNames().getInfo())
+
+    for candidate in candidates:
+        if candidate in property_names:
+            return candidate
+
+    raise ValueError(
+        f"None of these columns were found in the watershed asset: {candidates}. "
+        f"Available columns are: {sorted(property_names)}"
+    )
+
+
 def filter_watersheds_by_group(watersheds, run_group: Optional[str], run_group_column: str = "run_group"):
     if run_group in {None, "", "all"}:
         return watersheds
