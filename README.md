@@ -24,13 +24,15 @@ Run in Colab:
 [open the runner notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/notebooks/run-gee-spatial-extractions.ipynb)
 
 Basic flow:
-1. Build the watershed input file with `scripts/build-gee-watershed-upload.R`
+1. Build the watershed input files with `scripts/build-gee-watershed-upload.R`
 2. Upload watershed assets to Earth Engine
 3. Set the watershed asset and export folder in `config/gee-assets.yml`
 4. Run the Colab notebook
 5. Download exported CSVs and check them with `src/gee_spatial/checks.py`
 
 Current pilot:
-- watershed file: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/silica_gee_watersheds_20260629.geojson`
+- watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/silica_gee_watersheds_20260629_shapefile.zip`
 - geometry check: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/watershed-geometry-check_20260629.csv`
 - first test run: `precip`, `2020`, `batch_001`
+
+Note: the current Earth Engine asset was uploaded from the zipped shapefile. Earth Engine shortened some field names during upload, so the uploaded run-group field is `run_grp`.
