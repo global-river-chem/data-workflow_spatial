@@ -4,6 +4,7 @@ products:
     source: ECMWF ERA5-Land daily aggregated
     gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
     band: total_precipitation_sum
+    product_group: era5_land
     type: continuous
     source_temporal_resolution: daily
     selected_spatial_resolution_m: 11100
@@ -29,6 +30,7 @@ products:
     source: ECMWF ERA5-Land daily aggregated
     gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
     band: temperature_2m
+    product_group: era5_land
     type: continuous
     source_temporal_resolution: daily
     selected_spatial_resolution_m: 11100
@@ -54,6 +56,7 @@ products:
     source: ECMWF ERA5-Land daily aggregated
     gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
     band: total_evaporation_sum
+    product_group: era5_land
     type: continuous
     source_temporal_resolution: daily
     selected_spatial_resolution_m: 11100
@@ -74,11 +77,38 @@ products:
     output_name: evapotrans_mm
     notes: ERA5-Land evaporation is negative for upward water flux, so the scale factor flips sign and converts m to mm
 
+  potential_evap:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: potential_evaporation_sum
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: m
+    output_units: mm
+    scale_factor: -1000
+    offset: 0
+    daily_to_monthly: sum
+    daily_to_annual: sum
+    output_temporal_resolution:
+      - monthly
+      - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
+    reducer: mean
+    output_name: potential_evap_mm
+    notes: Potential evaporation is included as an atmospheric demand variable; scale factor follows ERA5-Land evaporation sign convention and converts m to mm
+
   snow_cover:
     status: selected
     source: ECMWF ERA5-Land daily aggregated
     gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
     band: snow_cover
+    product_group: era5_land
     type: continuous
     source_temporal_resolution: daily
     selected_spatial_resolution_m: 11100
@@ -98,6 +128,32 @@ products:
     reducer: mean
     output_name: snow_cover_fraction
     notes: Use ERA5-Land snow_cover as the snow variable; do not create a separate snow-day count for the GEE workflow
+
+  snow_water_equiv:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: snow_depth_water_equivalent
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: m
+    output_units: mm
+    scale_factor: 1000
+    offset: 0
+    daily_to_monthly: mean
+    daily_to_annual: max
+    output_temporal_resolution:
+      - monthly
+      - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
+    reducer: mean
+    output_name: snow_water_equiv_mm
+    notes: Snow depth water equivalent converted from m to mm; annual summaries use peak watershed mean snow water equivalent
 
   npp:
     status: selected

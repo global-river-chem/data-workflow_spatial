@@ -5,6 +5,12 @@ site_groups:
   suggested_sites_per_group: 25-50
   notes: Put very large watersheds in smaller groups before launching full exports
 
+active_run: era5_land_annual_pilot
+launch:
+  start_at: 0
+  max_tasks_per_session: 5
+  notes: Launch a small chunk, check outputs, then increase once the run looks good
+
 outputs:
   current_timing:
     - monthly
@@ -15,9 +21,64 @@ outputs:
     - weekly
   notes: Daily or weekly outputs can be added later from daily source products when needed
 
-pilot:
-  product: precip
-  year: 2020
-  month:
-  run_group: batch_001
-  launch_export: true
+runs:
+  era5_land_annual_pilot:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: annual
+    start_year: 2020
+    end_year: 2020
+    run_groups:
+      - batch_001
+    launch_export: true
+
+  era5_land_monthly_pilot:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: monthly
+    start_year: 2020
+    end_year: 2020
+    months:
+      - 1
+    run_groups:
+      - batch_001
+    launch_export: false
+
+  era5_land_monthly_full:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: monthly
+    start_year: 1950
+    end_year: 2025
+    months: all
+    run_groups: all
+    launch_export: false
+
+  modis_annual_full:
+    mode: single_product
+    products:
+      - npp
+      - greenup_day
+    timing: annual
+    start_year: 2001
+    end_year: 2023
+    run_groups: all
+    launch_export: false

@@ -31,6 +31,30 @@ EXPORT_COLUMNS = [
 ]
 
 
+ERA5_EXPORT_COLUMNS = [
+    "site_id",
+    "lter",
+    "shapefile_name",
+    "stream_name",
+    "Q_file_name",
+    "run_group",
+    "hydrosheds_used",
+    "hydrosheds_id",
+    "expected_area_km2",
+    "polygon_area_km2",
+    "source_type",
+    "period",
+    "year",
+    "month",
+    "precip_mm",
+    "temp_degC",
+    "evapotrans_mm",
+    "potential_evap_mm",
+    "snow_cover_fraction",
+    "snow_water_equiv_mm",
+]
+
+
 PROPERTY_NAMES = {
     "site_id": ["site_id"],
     "lter": ["LTER", "lter"],
@@ -44,6 +68,16 @@ PROPERTY_NAMES = {
     "polygon_area_km2": ["polygon_area_km2", "plyg__2"],
     "source_type": ["source_type", "src_typ"],
 }
+
+
+DEFAULT_ERA5_PRODUCTS = [
+    "precip",
+    "temp",
+    "evapotrans",
+    "potential_evap",
+    "snow_cover",
+    "snow_water_equiv",
+]
 
 
 def load_run_config(path: str | Path) -> Dict[str, Any]:
@@ -262,6 +296,77 @@ def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any]
     return ee.Feature(None, properties)
 
 
+def product_group_members(
+    products_config: Dict[str, Any],
+    group_name: str,
+    product_names: Optional[list[str]] = None,
+) -> list[str]:
+    products = products_config.get("products") or {}
+
+    if product_names:
+        names = product_names
+    else:
+        names = [
+            name
+            for name, product in products.items()
+            if (product or {}).get("product_group") == group_name
+        ]
+
+    missing = [name for name in names if name not in products]
+    if missing:
+        raise KeyError(f"Products not found in config: {missing}")
+
+    return names
+
+
+def build_multi_product_image(
+    product_names: list[str],
+    products_config: Dict[str, Any],
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+):
+    if not product_names:
+        raise ValueError("At least one product is required")
+
+    import ee
+
+    images = []
+    for product_name in product_names:
+        product = get_product(products_config, product_name)
+        images.append(build_continuous_image(product, year=year, month=month))
+
+    return ee.Image.cat(images)
+
+
+def clean_multi_product_feature(
+    feature,
+    product_names: list[str],
+    products_config: Dict[str, Any],
+    year,
+    month,
+):
+    import ee
+
+    properties = {
+        output_name: get_first_property(feature, source_names)
+        for output_name, source_names in PROPERTY_NAMES.items()
+    }
+    properties.update(
+        {
+            "period": "monthly" if month is not None else "annual",
+            "year": year if year is not None else "",
+            "month": month if month is not None else "",
+        }
+    )
+
+    for product_name in product_names:
+        product = get_product(products_config, product_name)
+        output_name = product.get("output_name")
+        properties[output_name] = feature.get(output_name)
+
+    return ee.Feature(None, properties)
+
+
 def extract_continuous_product(
     product_name: str,
     products_config: Dict[str, Any],
@@ -281,3 +386,41 @@ def extract_continuous_product(
     )
 
     return summary.map(lambda feature: clean_continuous_feature(feature, product_name, product, year, month))
+
+
+def extract_era5_land_products(
+    products_config: Dict[str, Any],
+    watersheds,
+    year: int,
+    month: Optional[int] = None,
+    product_names: Optional[list[str]] = None,
+):
+    selected_products = product_group_members(
+        products_config,
+        group_name="era5_land",
+        product_names=product_names or DEFAULT_ERA5_PRODUCTS,
+    )
+    image = build_multi_product_image(selected_products, products_config, year=year, month=month)
+
+    scale_values = [
+        get_product(products_config, product_name).get("selected_spatial_resolution_m")
+        for product_name in selected_products
+    ]
+    scale = max(value for value in scale_values if value is not None)
+
+    summary = summarize_image_by_watersheds(
+        image=image,
+        watersheds=watersheds,
+        reducer=ee_reducer("mean"),
+        scale=scale,
+    )
+
+    return summary.map(
+        lambda feature: clean_multi_product_feature(
+            feature,
+            selected_products,
+            products_config,
+            year,
+            month,
+        )
+    )
