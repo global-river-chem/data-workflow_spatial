@@ -5,10 +5,10 @@ site_groups:
   suggested_sites_per_group: 25-50
   notes: Put very large watersheds in smaller groups before launching full exports
 
-active_run: era5_land_annual_pilot
+active_run: era5_land_annual_overlap_2001_2022
 launch:
   start_at: 0
-  max_tasks_per_session: 5
+  max_tasks_per_session: 2
   notes: Launch a small chunk, check outputs, then increase once the run looks good
 
 outputs:
@@ -22,6 +22,45 @@ outputs:
   notes: Daily or weekly outputs can be added later from daily source products when needed
 
 runs:
+  era5_land_annual_overlap_2001_2022:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: annual
+    start_year: 2001
+    end_year: 2022
+    run_groups: all
+    launch_export: true
+    notes: First real annual pull using the shared window for ERA5-Land, MODIS, and GLC_FCS30D
+
+  modis_annual_overlap_2001_2022:
+    mode: single_product
+    products:
+      - npp
+      - greenup_day
+    timing: annual
+    start_year: 2001
+    end_year: 2022
+    run_groups: all
+    launch_export: false
+    notes: Annual MODIS pull for the same shared window
+
+  land_cover_annual_overlap_2001_2022:
+    mode: single_product
+    products:
+      - land_cover
+    timing: annual
+    start_year: 2001
+    end_year: 2022
+    run_groups: all
+    launch_export: false
+    notes: GLC_FCS30D annual land-cover window; class-fraction export still needs its own extractor before launching
+
   era5_land_annual_pilot:
     mode: era5_land
     products:
