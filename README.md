@@ -1,4 +1,4 @@
-# Spatial Data Workflow
+# Data Workflow: Spatial
 
 Google Earth Engine spatial data workflow for the global river chemistry project.
 
@@ -21,7 +21,7 @@ Run pattern:
 - check exported CSVs before launching the next batch
 
 Run in Colab:
-[open the runner notebook](https://colab.research.google.com/github/global-river-chem/spatial-data-workflow/blob/main/notebooks/run-gee-spatial-extractions.ipynb)
+[open the runner notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/notebooks/run-gee-spatial-extractions.ipynb)
 
 Basic flow:
 1. Build the watershed input file with `scripts/build-gee-watershed-upload.R`
