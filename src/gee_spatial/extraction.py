@@ -9,6 +9,43 @@ from typing import Any, Dict, Optional
 import yaml
 
 
+EXPORT_COLUMNS = [
+    "site_id",
+    "lter",
+    "shapefile_name",
+    "stream_name",
+    "Q_file_name",
+    "run_group",
+    "hydrosheds_used",
+    "hydrosheds_id",
+    "expected_area_km2",
+    "polygon_area_km2",
+    "source_type",
+    "driver",
+    "output_name",
+    "period",
+    "year",
+    "month",
+    "units",
+    "value",
+]
+
+
+PROPERTY_NAMES = {
+    "site_id": ["site_id"],
+    "lter": ["LTER", "lter"],
+    "shapefile_name": ["Shapefile_Name", "Shpfl_N"],
+    "stream_name": ["Stream_Name", "Strm_Nm"],
+    "Q_file_name": ["Discharge_File_Name", "Dsc_F_N"],
+    "run_group": ["run_group", "run_grp"],
+    "hydrosheds_used": ["hydrosheds_used", "hydrshds_s"],
+    "hydrosheds_id": ["hydrosheds_id", "hydrshds_d"],
+    "expected_area_km2": ["expected_area_km2", "expc__2"],
+    "polygon_area_km2": ["polygon_area_km2", "plyg__2"],
+    "source_type": ["source_type", "src_typ"],
+}
+
+
 def load_run_config(path: str | Path) -> Dict[str, Any]:
     with Path(path).open(encoding="utf-8") as handle:
         return yaml.safe_load(handle) or {}
@@ -174,6 +211,57 @@ def summarize_image_by_watersheds(
     return image.reduceRegions(**kwargs)
 
 
+def get_first_property(feature, names: list[str]):
+    import ee
+
+    value = feature.get(names[0])
+
+    for name in names[1:]:
+        value = ee.Algorithms.If(
+            ee.Algorithms.IsEqual(value, None),
+            feature.get(name),
+            value,
+        )
+
+    return value
+
+
+def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any], year, month):
+    import ee
+
+    reducer_name = product.get("reducer", "mean")
+    value = get_first_property(
+        feature,
+        [
+            product.get("output_name", "value"),
+            reducer_name,
+            "mean",
+            "sum",
+            "median",
+            "min",
+            "max",
+        ],
+    )
+
+    properties = {
+        output_name: get_first_property(feature, source_names)
+        for output_name, source_names in PROPERTY_NAMES.items()
+    }
+    properties.update(
+        {
+            "driver": product_name,
+            "output_name": product.get("output_name"),
+            "period": "monthly" if month is not None else "annual",
+            "year": year if year is not None else "",
+            "month": month if month is not None else "",
+            "units": product.get("output_units"),
+            "value": value,
+        }
+    )
+
+    return ee.Feature(None, properties)
+
+
 def extract_continuous_product(
     product_name: str,
     products_config: Dict[str, Any],
@@ -192,17 +280,4 @@ def extract_continuous_product(
         scale=scale,
     )
 
-    properties = {
-        "driver": product_name,
-        "output_name": product.get("output_name"),
-        "units": product.get("output_units"),
-        "period": "monthly" if month is not None else "annual",
-    }
-
-    if year is not None:
-        properties["year"] = year
-
-    if month is not None:
-        properties["month"] = month
-
-    return summary.map(lambda feature: feature.set(properties))
+    return summary.map(lambda feature: clean_continuous_feature(feature, product_name, product, year, month))

@@ -16,9 +16,13 @@ products:
     output_temporal_resolution:
       - monthly
       - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
     reducer: mean
     output_name: precip_mm
-    notes: Higher spatial and temporal resolution replacement for GPCP monthly precipitation
+    notes: Higher spatial and temporal resolution replacement for GPCP monthly precipitation; use complete annual exports through 2025
 
   temp:
     status: selected
@@ -37,6 +41,10 @@ products:
     output_temporal_resolution:
       - monthly
       - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
     reducer: mean
     output_name: temp_degC
     notes: Daily 2 m air temperature summarized to monthly and annual watershed means
@@ -58,6 +66,10 @@ products:
     output_temporal_resolution:
       - monthly
       - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
     reducer: mean
     output_name: evapotrans_mm
     notes: ERA5-Land evaporation is negative for upward water flux, so the scale factor flips sign and converts m to mm
@@ -79,6 +91,10 @@ products:
     output_temporal_resolution:
       - monthly
       - annual
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 1950
+    export_end_year: 2025
     reducer: mean
     output_name: snow_cover_fraction
     notes: Use ERA5-Land snow_cover as the snow variable; do not create a separate snow-day count for the GEE workflow
@@ -95,6 +111,10 @@ products:
     output_units: kgC_m2_year
     output_temporal_resolution:
       - annual
+    available_start_date: 2001-01-01
+    available_end_date_checked: 2025-01-01
+    export_start_year: 2001
+    export_end_year: 2024
     scale_factor: 0.0001
     offset: 0
     reducer: mean
@@ -112,9 +132,13 @@ products:
     output_units: day_of_year
     output_temporal_resolution:
       - annual
+    available_start_date: 2001-01-01
+    available_end_date_checked: 2024-01-01
+    export_start_year: 2001
+    export_end_year: 2023
     reducer: mean
     output_name: greenup_day
-    notes: Needs date-to-day-of-year handling before final export
+    notes: Needs date-to-day-of-year handling before final export; confirm final available year in Colab before full pull
 
   land_cover:
     status: selected
@@ -126,6 +150,10 @@ products:
     output_units: percent
     output_temporal_resolution:
       - annual
+    available_start_date: 2000-01-01
+    available_end_date_checked: 2022-12-31
+    export_start_year: 2000
+    export_end_year: 2022
     reducer: class_fraction
     output_name: land_cover_percent
     notes: Selected LULC product is GLC_FCS30D annual land cover; use the 30 m annual classes through 2022 listed in the GEE Community Catalog
