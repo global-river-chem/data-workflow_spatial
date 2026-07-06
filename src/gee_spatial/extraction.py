@@ -236,19 +236,25 @@ def summarize_image_by_watersheds(
     import ee
 
     export_reducer = reducer or ee.Reducer.mean()
-    kwargs = {
-        "collection": watersheds,
-        "reducer": export_reducer,
-        "tileScale": tile_scale,
-    }
 
-    if scale is not None:
-        kwargs["scale"] = scale
+    def summarize_feature(feature):
+        kwargs = {
+            "reducer": export_reducer,
+            "geometry": feature.geometry(),
+            "tileScale": tile_scale,
+            "maxPixels": 100000000,
+        }
 
-    if crs is not None:
-        kwargs["crs"] = crs
+        if scale is not None:
+            kwargs["scale"] = scale
 
-    return image.reduceRegions(**kwargs)
+        if crs is not None:
+            kwargs["crs"] = crs
+
+        values = image.clip(feature.geometry()).reduceRegion(**kwargs)
+        return feature.set(values)
+
+    return watersheds.map(summarize_feature)
 
 
 def fill_missing_values_from_centroid(
