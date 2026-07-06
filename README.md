@@ -57,17 +57,7 @@ Record-length decision still needed:
 
 ERA5-Land band options:
 - selected now: `total_precipitation_sum`, `temperature_2m`, `total_evaporation_sum`, `potential_evaporation_sum`, `snow_cover`, `snow_depth_water_equivalent`
-- temperature and humidity: `dewpoint_temperature_2m`, `temperature_2m`, `skin_temperature`
-- soil temperature: `soil_temperature_level_1`, `soil_temperature_level_2`, `soil_temperature_level_3`, `soil_temperature_level_4`
-- lake variables: `lake_bottom_temperature`, `lake_ice_depth`, `lake_ice_temperature`, `lake_mix_layer_depth`, `lake_mix_layer_temperature`, `lake_shape_factor`, `lake_total_layer_temperature`
-- snow variables: `snow_albedo`, `snow_cover`, `snow_density`, `snow_depth`, `snow_depth_water_equivalent`, `snowfall_sum`, `snowmelt_sum`, `temperature_of_snow_layer`
-- soil and canopy water: `skin_reservoir_content`, `volumetric_soil_water_layer_1`, `volumetric_soil_water_layer_2`, `volumetric_soil_water_layer_3`, `volumetric_soil_water_layer_4`
-- radiation and heat: `forecast_albedo`, `surface_latent_heat_flux_sum`, `surface_net_solar_radiation_sum`, `surface_net_thermal_radiation_sum`, `surface_sensible_heat_flux_sum`, `surface_solar_radiation_downwards_sum`, `surface_thermal_radiation_downwards_sum`
-- evaporation and runoff: `evaporation_from_bare_soil_sum`, `evaporation_from_open_water_surfaces_excluding_oceans_sum`, `evaporation_from_the_top_of_canopy_sum`, `evaporation_from_vegetation_transpiration_sum`, `potential_evaporation_sum`, `runoff_sum`, `snow_evaporation_sum`, `sub_surface_runoff_sum`, `surface_runoff_sum`, `total_evaporation_sum`
-- wind and pressure: `u_component_of_wind_10m`, `v_component_of_wind_10m`, `surface_pressure`
-- vegetation: `leaf_area_index_high_vegetation`, `leaf_area_index_low_vegetation`
-- daily minimum and maximum bands are also available for many non-sum variables, including temperature, snow, soil water, radiation, evaporation, runoff, wind, pressure, and leaf area index
-- note from the Earth Engine catalog: the three component evaporation bands have a known swap issue in the ECMWF source data, so avoid those unless we specifically need them and check them carefully
-- catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
+- other available bands are listed in the Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
+- note from the catalog: the three component evaporation bands have a known swap issue in the ECMWF source data, so avoid those unless we specifically need them and check them carefully
 
 Note: the current Earth Engine asset was uploaded from the zipped shapefile. Earth Engine shortened some field names during upload, so the uploaded run-group field is `run_grp`.
