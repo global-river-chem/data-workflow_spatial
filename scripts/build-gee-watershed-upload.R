@@ -9,9 +9,26 @@ box_root <- Sys.getenv(
 
 date_tag <- Sys.getenv("GEE_WATERSHED_DATE", unset = "20260629")
 spatial_root <- file.path(box_root, "spatial-data-extractions")
+
+first_existing <- function(paths) {
+  paths <- paths[nzchar(paths)]
+  hit <- paths[file.exists(paths)][1]
+  if (is.na(hit)) {
+    return("")
+  }
+  hit
+}
+
 wide_file <- Sys.getenv(
   "GEE_WIDE_SPATIAL_FILE",
   unset = file.path(spatial_root, "spatial-data-files", "appeears-nasa", paste0("all-data_si-extract_3_", date_tag, ".csv"))
+)
+site_reference_file <- Sys.getenv(
+  "GEE_SITE_REFERENCE_FILE",
+  unset = first_existing(c(
+    file.path(spatial_root, "master-datasets", "Site_Reference_Table - WRTDS_Reference_Table_LTER_V3.csv"),
+    file.path(spatial_root, "master-datasets", "Site_Reference_Table - WRTDS_Reference_Table_LTER_V2.csv")
+  ))
 )
 base_watershed_file <- Sys.getenv(
   "GEE_BASE_WATERSHED_FILE",
@@ -170,6 +187,28 @@ read_individual_for_row <- function(row, path) {
 message("Reading current spatial file: ", wide_file)
 wide <- read.csv(wide_file, check.names = FALSE, stringsAsFactors = FALSE)
 wide$.site_key <- site_key(wide$LTER, wide$Shapefile_Name, wide$Discharge_File_Name)
+wide$drainage_area <- suppressWarnings(as.numeric(wide$drainage_area))
+
+if (nzchar(site_reference_file) && file.exists(site_reference_file)) {
+  message("Reading site reference table for drainage areas: ", site_reference_file)
+  reference_area <- read.csv(site_reference_file, check.names = FALSE, stringsAsFactors = FALSE)
+  reference_area <- reference_area[, c("LTER", "Shapefile_Name", "Discharge_File_Name", "drainSqKm"), drop = FALSE]
+  reference_area$.site_key <- site_key(
+    reference_area$LTER,
+    reference_area$Shapefile_Name,
+    reference_area$Discharge_File_Name
+  )
+  reference_area$reference_drainage_area <- suppressWarnings(as.numeric(reference_area$drainSqKm))
+  reference_area <- reference_area %>%
+    filter(!is.na(reference_drainage_area)) %>%
+    group_by(.site_key) %>%
+    summarize(reference_drainage_area = dplyr::first(reference_drainage_area), .groups = "drop")
+
+  wide <- wide %>%
+    left_join(reference_area, by = ".site_key") %>%
+    mutate(drainage_area = dplyr::coalesce(drainage_area, reference_drainage_area)) %>%
+    select(-reference_drainage_area)
+}
 
 message("Reading base watershed file: ", base_watershed_file)
 base <- standardize_base(read_watershed(base_watershed_file))
@@ -198,6 +237,13 @@ individual$.site_key <- site_key(individual$LTER, individual$Shapefile_Name, ind
 
 out <- rbind(base, individual)
 out <- out[!duplicated(out$.site_key), ]
+
+wide_area <- wide[!duplicated(wide$.site_key), c(".site_key", "drainage_area"), drop = FALSE]
+expected_area_from_wide <- wide_area$drainage_area[match(out$.site_key, wide_area$.site_key)]
+out$expected_area_km2 <- dplyr::coalesce(
+  suppressWarnings(as.numeric(out$expected_area_km2)),
+  expected_area_from_wide
+)
 
 computed_polygon_area_km2 <- as.numeric(st_area(st_transform(out, 5070))) / 1e6
 out$polygon_area_km2 <- dplyr::coalesce(
