@@ -275,3 +275,15 @@ products:
     reducer: class_fraction
     output_name: soil_class_percent
     notes: Keep optional because the old soil-order output has not been very useful
+
+  human_impacts:
+    status: needs_selection
+    source: Human impact candidates tracked in data-documentation/gee-human-impact-datasets.md
+    gee_id: see data-documentation/gee-human-impact-datasets.md
+    type: source_list
+    source_temporal_resolution: mixed
+    output_temporal_resolution:
+      - annual
+      - static
+    output_name: human_impacts_candidates
+    notes: Pick the first set of human-impact layers before adding run entries

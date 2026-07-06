@@ -47,7 +47,7 @@ def month_values(months: Any = "all") -> list[int]:
 
 def run_periods(timing: str, start_year: int | None, end_year: int | None, months: Any = "all") -> list[dict]:
     if timing == "static":
-        return [{"year": None, "month": None, "period": "static"}]
+        return [{"year": None, "month": None, "months": None, "period": "static"}]
 
     if start_year is None or end_year is None:
         raise ValueError("start_year and end_year are required unless timing is static")
@@ -55,10 +55,19 @@ def run_periods(timing: str, start_year: int | None, end_year: int | None, month
     periods = []
     for year in range(int(start_year), int(end_year) + 1):
         if timing == "annual":
-            periods.append({"year": year, "month": None, "period": "annual"})
+            periods.append({"year": year, "month": None, "months": None, "period": "annual"})
         elif timing == "monthly":
             for month in month_values(months):
-                periods.append({"year": year, "month": month, "period": "monthly"})
+                periods.append({"year": year, "month": month, "months": None, "period": "monthly"})
+        elif timing in {"monthly_by_year", "monthly_year"}:
+            periods.append(
+                {
+                    "year": year,
+                    "month": None,
+                    "months": month_values(months),
+                    "period": "monthly_by_year",
+                }
+            )
         else:
             raise ValueError(f"Unsupported timing: {timing}")
 
@@ -116,6 +125,7 @@ def build_run_list(
                         "products": run.get("products"),
                         "year": period["year"],
                         "month": period["month"],
+                        "months": period.get("months"),
                         "period": period["period"],
                         "run_group": run_group,
                     }
@@ -137,6 +147,9 @@ def period_label(year: Optional[int] = None, month: Optional[int] = None, period
 
     if year is None:
         raise ValueError("year is required unless period is static")
+
+    if period in {"monthly_by_year", "monthly_year"}:
+        return f"{year}_monthly"
 
     if month is None:
         return str(year)

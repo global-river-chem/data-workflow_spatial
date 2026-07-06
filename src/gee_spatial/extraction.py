@@ -33,7 +33,7 @@ EXPORT_COLUMNS = [
 ]
 
 
-ERA5_EXPORT_COLUMNS = [
+ERA5_METADATA_COLUMNS = [
     "site_id",
     "lter",
     "shapefile_name",
@@ -49,12 +49,22 @@ ERA5_EXPORT_COLUMNS = [
     "period",
     "year",
     "month",
+]
+
+
+ERA5_DEFAULT_VALUE_COLUMNS = [
     "precip_mm",
     "temp_degC",
     "evapotrans_mm",
     "potential_evap_mm",
     "snow_cover_fraction",
     "snow_water_equiv_mm",
+]
+
+
+ERA5_EXPORT_COLUMNS = [
+    *ERA5_METADATA_COLUMNS,
+    *ERA5_DEFAULT_VALUE_COLUMNS,
     "used_centroid_fallback",
 ]
 
@@ -403,6 +413,27 @@ def product_group_members(
     return names
 
 
+def era5_export_columns(
+    products_config: Dict[str, Any],
+    product_names: Optional[list[str]] = None,
+) -> list[str]:
+    selected_products = product_group_members(
+        products_config,
+        group_name="era5_land",
+        product_names=product_names or DEFAULT_ERA5_PRODUCTS,
+    )
+    value_columns = [
+        get_product(products_config, product_name).get("output_name")
+        for product_name in selected_products
+    ]
+
+    return [
+        *ERA5_METADATA_COLUMNS,
+        *value_columns,
+        "used_centroid_fallback",
+    ]
+
+
 def build_multi_product_image(
     product_names: list[str],
     products_config: Dict[str, Any],
@@ -532,3 +563,30 @@ def extract_era5_land_products(
             month,
         )
     )
+
+
+def extract_era5_land_monthly_year_products(
+    products_config: Dict[str, Any],
+    watersheds,
+    year: int,
+    months: Any = "all",
+    product_names: Optional[list[str]] = None,
+):
+    from .runs import month_values
+
+    month_list = month_values(months)
+    if not month_list:
+        raise ValueError("At least one month is required for a monthly-by-year export")
+
+    monthly_rows = None
+    for month in month_list:
+        month_rows = extract_era5_land_products(
+            products_config=products_config,
+            watersheds=watersheds,
+            year=year,
+            month=month,
+            product_names=product_names,
+        )
+        monthly_rows = month_rows if monthly_rows is None else monthly_rows.merge(month_rows)
+
+    return monthly_rows

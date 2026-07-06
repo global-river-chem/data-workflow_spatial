@@ -7,9 +7,11 @@ This repo keeps the reusable GEE code in GitHub and uses Colab as the online run
 Current contents:
 - `scripts/build-gee-watershed-upload.R`: builds the watershed file used by Google Earth Engine
 - `scripts/check-product-config.py`: checks the product settings before running GEE exports
+- `scripts/plan-gee-runs.py`: estimates export tasks and rows before launching a run
 - `notebooks/run-gee-spatial-extractions.ipynb`: Colab runner that installs this repo and starts GEE
 - `src/gee_spatial/`: reusable Python helpers for GEE extraction, export, and CSV checks
 - `config/`: Earth Engine asset and product settings
+- `docs/gee-full-run-plan.md`: notes for scaling from pilot runs to all sites and full ERA5-Land records
 - `gee-code/derive-western-australia.js`: draft GEE script for Western Australia watershed checks
 
 Product search and dataset decisions live in `global-river-chem/data-documentation`. This repo is for the code that runs those decisions.
@@ -19,6 +21,7 @@ Run pattern:
 - run one product group, one time slice, and one site group at a time
 - split large watersheds into smaller `run_group` batches
 - generate the full run list from `config/run-list.yml`
+- use `monthly_by_year` for long monthly ERA5-Land runs so each export has all 12 months for one group-year
 - launch only a small chunk of tasks per Colab session
 - check exported CSVs before launching the next batch
 
@@ -30,8 +33,9 @@ Basic flow:
 2. Upload watershed assets to Earth Engine
 3. Set the watershed asset and export folder in `config/gee-assets.yml`
 4. Pick the active run in `config/run-list.yml`
-5. Run the Colab notebook
-6. Download exported CSVs and check them with `src/gee_spatial/checks.py`
+5. Check the task count with `python3 scripts/plan-gee-runs.py`
+6. Run the Colab notebook
+7. Download exported CSVs and check them with `src/gee_spatial/checks.py`
 
 Current first pull:
 - watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/silica_gee_watersheds_20260629_shapefile.zip`
@@ -50,13 +54,19 @@ Product periods:
 - MODIS greenup day: 2001-2023
 - GLC_FCS30D annual land cover: 2000-2022
 
-Record-length decision still needed:
+Record-length plan:
 - first cross-product annual pull: 2001-2022, because this is the shared window across ERA5-Land, MODIS, and GLC_FCS30D
-- longer ERA5-Land-only pull: possible for 1950-2025, but we need to decide whether those extra years are useful without matching MODIS and land-cover products
-- monthly ERA5-Land pull: planned, but run it in smaller year blocks so it stays easy to check and restart
+- longer ERA5-Land-only pull: 1950-2025 is listed as a full annual run
+- monthly ERA5-Land pull: use `monthly_by_year` timing, launch it in chunks, and check the pilot before scaling up
+
+Full-run planning:
+- use `docs/gee-full-run-plan.md` for task counts, rough timing, and upload notes
+- current full ERA5-Land configs are present but `launch_export: false`
+- Drive is the default export destination; Cloud Storage can be switched on in `config/gee-assets.yml` for longer runs
 
 ERA5-Land band options:
 - selected now: `total_precipitation_sum`, `temperature_2m`, `total_evaporation_sum`, `potential_evaporation_sum`, `snow_cover`, `snow_depth_water_equivalent`
 - other available bands are listed in the Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
+- the ERA5 export column list now follows the products listed for the run, so added bands will be exported instead of dropped
 
 Note: the current Earth Engine asset was uploaded from the zipped shapefile. Earth Engine shortened some field names during upload, so the uploaded run-group field is `run_grp`.

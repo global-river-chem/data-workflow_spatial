@@ -14,6 +14,7 @@ launch:
 outputs:
   current_timing:
     - monthly
+    - monthly_by_year
     - annual
     - static
   later_timing:
@@ -37,6 +38,22 @@ runs:
     run_groups: all
     launch_export: true
     notes: First real annual pull using the shared window for ERA5-Land, MODIS, and GLC_FCS30D
+
+  era5_land_annual_full_1950_2025:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: annual
+    start_year: 1950
+    end_year: 2025
+    run_groups: all
+    launch_export: false
+    notes: All current watersheds for the full ERA5-Land annual window; run after the overlap pull checks out
 
   modis_annual_overlap_2001_2022:
     mode: single_product
@@ -95,6 +112,24 @@ runs:
       - batch_001
     launch_export: false
 
+  era5_land_monthly_year_pilot:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: monthly_by_year
+    start_year: 2020
+    end_year: 2020
+    months: all
+    run_groups:
+      - batch_001
+    launch_export: false
+    notes: One export file with all 12 months for one site group; use this before launching the full monthly run
+
   era5_land_monthly_full:
     mode: era5_land
     products:
@@ -104,12 +139,13 @@ runs:
       - potential_evap
       - snow_cover
       - snow_water_equiv
-    timing: monthly
+    timing: monthly_by_year
     start_year: 1950
     end_year: 2025
     months: all
     run_groups: all
     launch_export: false
+    notes: Monthly ERA5-Land, bundled by year so each task writes 12 months for one site group
 
   modis_annual_full:
     mode: single_product
@@ -121,3 +157,13 @@ runs:
     end_year: 2023
     run_groups: all
     launch_export: false
+
+  static_context_full:
+    mode: single_product
+    products:
+      - elevation
+      - permafrost
+    timing: static
+    run_groups: all
+    launch_export: false
+    notes: Static continuous context layers; permafrost needs the project asset path before this can launch

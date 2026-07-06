@@ -95,7 +95,7 @@ def missing_fields(product: Dict[str, Any]) -> List[str]:
     if product.get("type") == "continuous":
         required.update(CONTINUOUS_REQUIRED)
 
-    if product.get("source_temporal_resolution") != "static":
+    if product.get("type") != "source_list" and product.get("source_temporal_resolution") != "static":
         required.add("selected_spatial_resolution_m")
 
     return sorted(field for field in required if field not in product)
