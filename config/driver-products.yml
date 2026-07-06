@@ -114,7 +114,7 @@ products:
     selected_spatial_resolution_m: 11100
     native_units: fraction
     output_units: fraction
-    scale_factor: 1
+    scale_factor: 0.01
     offset: 0
     daily_to_monthly: mean
     daily_to_annual: max
@@ -127,7 +127,7 @@ products:
     export_end_year: 2025
     reducer: mean
     output_name: snow_cover_fraction
-    notes: Use ERA5-Land snow_cover as the snow variable; do not create a separate snow-day count for the GEE workflow
+    notes: Pilot exports came through on a 0-100 scale, so divide by 100 and keep the output as a fraction
 
   snow_water_equiv:
     status: selected

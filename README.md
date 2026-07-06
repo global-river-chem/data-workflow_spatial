@@ -40,6 +40,7 @@ Current first pull:
 - current test size: 2 annual exports, starting with `batch_001` for 2001 and 2002
 - reason for this window: 2001-2022 is the shared annual window for ERA5-Land, MODIS NPP/greenup, and GLC_FCS30D land cover
 - ERA5-Land columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`
+- snow cover note: the first pilot exports came through on a 0-100 scale, so the config now divides `snow_cover` by 100; rerun 2001 and 2002 before scaling up so all ERA5-Land outputs use the same fraction units
 
 Product periods:
 - ERA5-Land daily aggregated: 1950-01-02 through near-current; use complete annual exports through 2025 for now
