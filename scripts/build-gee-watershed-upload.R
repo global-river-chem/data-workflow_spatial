@@ -287,7 +287,7 @@ out$drainage_area_source <- ifelse(
   "polygon_geometry",
   out$drainage_area_source
 )
-out$drain_src <- out$drainage_area_source
+out$drn_src <- out$drainage_area_source
 out$tiny_ws <- !is.na(out$polygon_area_km2) & out$polygon_area_km2 <= tiny_watershed_area_km2
 
 wide_order <- match(out$.site_key, wide$.site_key)
@@ -312,7 +312,7 @@ out <- out %>%
     hydrosheds_used,
     hydrosheds_id,
     expected_area_km2,
-    drain_src,
+    drn_src,
     polygon_area_km2,
     tiny_ws,
     source_type,
@@ -357,7 +357,7 @@ match_report <- wide %>%
         source_type,
         source_file,
         expected_area_km2,
-        drainage_area_source = drain_src,
+        drainage_area_source = drn_src,
         polygon_area_km2,
         tiny_ws
       ),

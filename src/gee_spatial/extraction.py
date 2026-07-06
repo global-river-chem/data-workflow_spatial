@@ -81,7 +81,7 @@ PROPERTY_NAMES = {
     "hydrosheds_used": ["hydrosheds_used", "hydrshds_s"],
     "hydrosheds_id": ["hydrosheds_id", "hydrshds_d"],
     "expected_area_km2": ["expected_area_km2", "expc__2"],
-    "drainage_area_source": ["drainage_area_source", "drain_src"],
+    "drainage_area_source": ["drainage_area_source", "drain_src", "drn_src"],
     "polygon_area_km2": ["polygon_area_km2", "plyg__2"],
     "tiny_watershed": ["tiny_watershed", "tiny_ws"],
     "source_type": ["source_type", "src_typ"],
