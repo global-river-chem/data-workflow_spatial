@@ -91,6 +91,7 @@ standardize_base <- function(x) {
         suppressWarnings(as.numeric(if ("exp_area" %in% names(.)) exp_area else NA_real_)),
         suppressWarnings(as.numeric(if ("exp_are" %in% names(.)) exp_are else NA_real_))
       ),
+      drainage_area_source = ifelse(!is.na(expected_area_km2), "base_watershed_file", NA_character_),
       polygon_area_km2 = dplyr::coalesce(
         suppressWarnings(as.numeric(if ("real_area" %in% names(.)) real_area else NA_real_)),
         suppressWarnings(as.numeric(if ("real_ar" %in% names(.)) real_ar else NA_real_))
@@ -105,6 +106,7 @@ standardize_base <- function(x) {
       Stream_Name,
       Discharge_File_Name,
       expected_area_km2,
+      drainage_area_source,
       polygon_area_km2,
       hydrosheds_id,
       source_file,
@@ -179,6 +181,11 @@ read_individual_for_row <- function(row, path) {
     Stream_Name = row$Stream_Name,
     Discharge_File_Name = row$Discharge_File_Name,
     expected_area_km2 = suppressWarnings(as.numeric(row$drainage_area)),
+    drainage_area_source = ifelse(
+      is.na(suppressWarnings(as.numeric(row$drainage_area))),
+      NA_character_,
+      row$drainage_area_source
+    ),
     polygon_area_km2 = NA_real_,
     hydrosheds_id = NA_character_,
     source_file = path,
@@ -192,6 +199,7 @@ message("Reading current spatial file: ", wide_file)
 wide <- read.csv(wide_file, check.names = FALSE, stringsAsFactors = FALSE)
 wide$.site_key <- site_key(wide$LTER, wide$Shapefile_Name, wide$Discharge_File_Name)
 wide$drainage_area <- suppressWarnings(as.numeric(wide$drainage_area))
+wide$drainage_area_source <- ifelse(!is.na(wide$drainage_area), "wide_spatial_file", NA_character_)
 
 if (nzchar(site_reference_file) && file.exists(site_reference_file)) {
   message("Reading site reference table for drainage areas: ", site_reference_file)
@@ -210,7 +218,14 @@ if (nzchar(site_reference_file) && file.exists(site_reference_file)) {
 
   wide <- wide %>%
     left_join(reference_area, by = ".site_key") %>%
-    mutate(drainage_area = dplyr::coalesce(drainage_area, reference_drainage_area)) %>%
+    mutate(
+      drainage_area_source = dplyr::case_when(
+        !is.na(drainage_area) ~ drainage_area_source,
+        !is.na(reference_drainage_area) ~ "site_reference_table",
+        TRUE ~ drainage_area_source
+      ),
+      drainage_area = dplyr::coalesce(drainage_area, reference_drainage_area)
+    ) %>%
     select(-reference_drainage_area)
 }
 
@@ -242,12 +257,21 @@ individual$.site_key <- site_key(individual$LTER, individual$Shapefile_Name, ind
 out <- rbind(base, individual)
 out <- out[!duplicated(out$.site_key), ]
 
-wide_area <- wide[!duplicated(wide$.site_key), c(".site_key", "drainage_area"), drop = FALSE]
+wide_area <- wide[!duplicated(wide$.site_key), c(".site_key", "drainage_area", "drainage_area_source"), drop = FALSE]
 expected_area_from_wide <- wide_area$drainage_area[match(out$.site_key, wide_area$.site_key)]
+expected_area_source_from_wide <- wide_area$drainage_area_source[match(out$.site_key, wide_area$.site_key)]
+existing_expected_area <- suppressWarnings(as.numeric(out$expected_area_km2))
+fills_expected_area_from_wide <- is.na(existing_expected_area) & !is.na(expected_area_from_wide)
 out$expected_area_km2 <- dplyr::coalesce(
-  suppressWarnings(as.numeric(out$expected_area_km2)),
+  existing_expected_area,
   expected_area_from_wide
 )
+out$drainage_area_source <- ifelse(
+  fills_expected_area_from_wide,
+  expected_area_source_from_wide,
+  out$drainage_area_source
+)
+out$drain_src <- out$drainage_area_source
 
 computed_polygon_area_km2 <- as.numeric(st_area(st_transform(out, 5070))) / 1e6
 out$polygon_area_km2 <- dplyr::coalesce(
@@ -278,6 +302,7 @@ out <- out %>%
     hydrosheds_used,
     hydrosheds_id,
     expected_area_km2,
+    drain_src,
     polygon_area_km2,
     tiny_ws,
     source_type,
@@ -304,11 +329,28 @@ utils::zip(zipfile = zip_file, files = list.files(shp_dir), flags = "-q")
 setwd(old_wd)
 
 match_report <- wide %>%
-  select(LTER, Shapefile_Name, Stream_Name, Discharge_File_Name, drainage_area) %>%
+  select(
+    LTER,
+    Shapefile_Name,
+    Stream_Name,
+    Discharge_File_Name,
+    drainage_area,
+    input_drainage_area_source = drainage_area_source
+  ) %>%
   mutate(.site_key = site_key(LTER, Shapefile_Name, Discharge_File_Name)) %>%
   left_join(
     st_drop_geometry(out) %>%
-      select(.site_key, site_id, run_group, source_type, source_file, expected_area_km2, polygon_area_km2, tiny_ws),
+      select(
+        .site_key,
+        site_id,
+        run_group,
+        source_type,
+        source_file,
+        expected_area_km2,
+        drainage_area_source = drain_src,
+        polygon_area_km2,
+        tiny_ws
+      ),
     by = ".site_key"
   ) %>%
   mutate(

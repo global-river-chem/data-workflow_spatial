@@ -8,6 +8,8 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 - Geometry check file: `watershed-geometry-check_20260629.csv`
 - Matched watershed rows in the current asset file: 497
 - Run groups: 47
+- `expected_area_km2` is the drainage area used for run grouping and checks.
+- `drainage_area_source` says where that drainage area came from: the active wide spatial file, the site reference table, or the base watershed file.
 - Tiny watersheds are marked with `tiny_watershed`.
 - Rows filled from centroid sampling are marked with `used_centroid_fallback`.
 
