@@ -199,6 +199,12 @@ individual$.site_key <- site_key(individual$LTER, individual$Shapefile_Name, ind
 out <- rbind(base, individual)
 out <- out[!duplicated(out$.site_key), ]
 
+computed_polygon_area_km2 <- as.numeric(st_area(st_transform(out, 5070))) / 1e6
+out$polygon_area_km2 <- dplyr::coalesce(
+  suppressWarnings(as.numeric(out$polygon_area_km2)),
+  computed_polygon_area_km2
+)
+
 wide_order <- match(out$.site_key, wide$.site_key)
 out <- out[order(wide_order), ]
 out$site_id <- safe_asset_id(out$LTER, out$Shapefile_Name)

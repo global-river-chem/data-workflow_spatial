@@ -245,6 +245,45 @@ def summarize_image_by_watersheds(
     return image.reduceRegions(**kwargs)
 
 
+def fill_missing_values_from_centroid(
+    summary,
+    image,
+    output_names: list[str],
+    reducer=None,
+    scale: Optional[float] = None,
+    tile_scale: int = 4,
+):
+    import ee
+
+    export_reducer = reducer or ee.Reducer.mean()
+
+    def fill_feature(feature):
+        kwargs = {
+            "reducer": export_reducer,
+            "geometry": feature.geometry().centroid(1),
+            "tileScale": tile_scale,
+            "maxPixels": 100000000,
+        }
+
+        if scale is not None:
+            kwargs["scale"] = scale
+
+        centroid_values = image.reduceRegion(**kwargs)
+
+        updates = {
+            output_name: ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get(output_name), None),
+                centroid_values.get(output_name),
+                feature.get(output_name),
+            )
+            for output_name in output_names
+        }
+
+        return feature.set(updates)
+
+    return summary.map(fill_feature)
+
+
 def get_first_property(feature, names: list[str]):
     import ee
 
@@ -384,6 +423,13 @@ def extract_continuous_product(
         reducer=ee_reducer(product.get("reducer", "mean")),
         scale=scale,
     )
+    summary = fill_missing_values_from_centroid(
+        summary=summary,
+        image=image,
+        output_names=[product.get("output_name", "value")],
+        reducer=ee_reducer(product.get("reducer", "mean")),
+        scale=scale,
+    )
 
     return summary.map(lambda feature: clean_continuous_feature(feature, product_name, product, year, month))
 
@@ -411,6 +457,17 @@ def extract_era5_land_products(
     summary = summarize_image_by_watersheds(
         image=image,
         watersheds=watersheds,
+        reducer=ee_reducer("mean"),
+        scale=scale,
+    )
+    output_names = [
+        get_product(products_config, product_name).get("output_name")
+        for product_name in selected_products
+    ]
+    summary = fill_missing_values_from_centroid(
+        summary=summary,
+        image=image,
+        output_names=output_names,
         reducer=ee_reducer("mean"),
         scale=scale,
     )
