@@ -20,6 +20,7 @@ EXPORT_COLUMNS = [
     "hydrosheds_id",
     "expected_area_km2",
     "polygon_area_km2",
+    "tiny_watershed",
     "source_type",
     "driver",
     "output_name",
@@ -43,6 +44,7 @@ ERA5_EXPORT_COLUMNS = [
     "hydrosheds_id",
     "expected_area_km2",
     "polygon_area_km2",
+    "tiny_watershed",
     "source_type",
     "period",
     "year",
@@ -68,6 +70,7 @@ PROPERTY_NAMES = {
     "hydrosheds_id": ["hydrosheds_id", "hydrshds_d"],
     "expected_area_km2": ["expected_area_km2", "expc__2"],
     "polygon_area_km2": ["polygon_area_km2", "plyg__2"],
+    "tiny_watershed": ["tiny_watershed", "tiny_ws"],
     "source_type": ["source_type", "src_typ"],
 }
 
@@ -80,6 +83,7 @@ DEFAULT_ERA5_PRODUCTS = [
     "snow_cover",
     "snow_water_equiv",
 ]
+TINY_WATERSHED_AREA_KM2 = 10
 
 
 def load_run_config(path: str | Path) -> Dict[str, Any]:
@@ -315,6 +319,19 @@ def get_first_property(feature, names: list[str]):
     return value
 
 
+def tiny_watershed_value(feature, threshold_km2: float = TINY_WATERSHED_AREA_KM2):
+    import ee
+
+    existing_value = get_first_property(feature, PROPERTY_NAMES["tiny_watershed"])
+    geometry_area_km2 = feature.geometry().area(1).divide(1000000)
+
+    return ee.Algorithms.If(
+        ee.Algorithms.IsEqual(existing_value, None),
+        geometry_area_km2.lte(threshold_km2),
+        existing_value,
+    )
+
+
 def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any], year, month):
     import ee
 
@@ -336,6 +353,7 @@ def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any]
         output_name: get_first_property(feature, source_names)
         for output_name, source_names in PROPERTY_NAMES.items()
     }
+    properties["tiny_watershed"] = tiny_watershed_value(feature)
     properties.update(
         {
             "driver": product_name,
@@ -411,6 +429,7 @@ def clean_multi_product_feature(
         output_name: get_first_property(feature, source_names)
         for output_name, source_names in PROPERTY_NAMES.items()
     }
+    properties["tiny_watershed"] = tiny_watershed_value(feature)
     properties.update(
         {
             "period": "monthly" if month is not None else "annual",

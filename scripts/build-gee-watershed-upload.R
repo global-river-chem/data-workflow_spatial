@@ -50,6 +50,10 @@ output_dir <- Sys.getenv(
   "GEE_UPLOAD_OUTPUT_DIR",
   unset = file.path(spatial_root, "spatial-data-files", "gee", "earth-engine-input-files", paste0(date_tag, "-gee-watersheds"))
 )
+tiny_watershed_area_km2 <- suppressWarnings(as.numeric(Sys.getenv("GEE_TINY_WATERSHED_AREA_KM2", unset = "10")))
+if (is.na(tiny_watershed_area_km2) || tiny_watershed_area_km2 <= 0) {
+  stop("GEE_TINY_WATERSHED_AREA_KM2 must be a positive number.", call. = FALSE)
+}
 
 norm_key <- function(x) {
   x <- stringi::stri_trans_general(as.character(x), "Latin-ASCII")
@@ -250,6 +254,7 @@ out$polygon_area_km2 <- dplyr::coalesce(
   suppressWarnings(as.numeric(out$polygon_area_km2)),
   computed_polygon_area_km2
 )
+out$tiny_ws <- !is.na(out$polygon_area_km2) & out$polygon_area_km2 <= tiny_watershed_area_km2
 
 wide_order <- match(out$.site_key, wide$.site_key)
 out <- out[order(wide_order), ]
@@ -274,6 +279,7 @@ out <- out %>%
     hydrosheds_id,
     expected_area_km2,
     polygon_area_km2,
+    tiny_ws,
     source_type,
     source_file,
     geometry
@@ -300,8 +306,16 @@ setwd(old_wd)
 match_report <- wide %>%
   select(LTER, Shapefile_Name, Stream_Name, Discharge_File_Name, drainage_area) %>%
   mutate(.site_key = site_key(LTER, Shapefile_Name, Discharge_File_Name)) %>%
-  left_join(st_drop_geometry(out) %>% select(.site_key, site_id, run_group, source_type, source_file), by = ".site_key") %>%
-  mutate(match_status = ifelse(is.na(site_id), "missing_geometry", "matched")) %>%
+  left_join(
+    st_drop_geometry(out) %>%
+      select(.site_key, site_id, run_group, source_type, source_file, expected_area_km2, polygon_area_km2, tiny_ws),
+    by = ".site_key"
+  ) %>%
+  mutate(
+    tiny_watershed = ifelse(is.na(tiny_ws), NA, tiny_ws),
+    match_status = ifelse(is.na(site_id), "missing_geometry", "matched")
+  ) %>%
+  select(-tiny_ws) %>%
   select(-.site_key)
 write.csv(match_report, match_file, row.names = FALSE, na = "")
 
