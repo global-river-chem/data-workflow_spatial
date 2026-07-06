@@ -42,7 +42,7 @@ Current first pull:
 - reason for this window: 2001-2022 is the shared annual window for ERA5-Land, MODIS NPP/greenup, and GLC_FCS30D land cover
 - ERA5-Land columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`
 - snow cover note: the first pilot exports came through on a 0-100 scale, so the config now divides `snow_cover` by 100; rerun 2001 and 2002 before scaling up so all ERA5-Land outputs use the same fraction units
-- small watershed note: if a watershed is too small to catch an ERA5 pixel center, the GEE code fills missing values from the watershed centroid; this is mainly for tiny AND basins in `batch_001`
+- small watershed note: if a watershed is too small to catch an ERA5 pixel center, the GEE code fills missing values from the watershed centroid and marks those rows with `used_centroid_fallback`; this is mainly for tiny AND basins in `batch_001`
 
 Product periods:
 - ERA5-Land daily aggregated: 1950-01-02 through near-current; use complete annual exports through 2025 for now

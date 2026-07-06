@@ -28,6 +28,7 @@ EXPORT_COLUMNS = [
     "month",
     "units",
     "value",
+    "used_centroid_fallback",
 ]
 
 
@@ -52,6 +53,7 @@ ERA5_EXPORT_COLUMNS = [
     "potential_evap_mm",
     "snow_cover_fraction",
     "snow_water_equiv_mm",
+    "used_centroid_fallback",
 ]
 
 
@@ -270,6 +272,19 @@ def fill_missing_values_from_centroid(
 
         centroid_values = image.reduceRegion(**kwargs)
 
+        fallback_checks = [
+            ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get(output_name), None),
+                ee.Algorithms.If(
+                    ee.Algorithms.IsEqual(centroid_values.get(output_name), None),
+                    False,
+                    True,
+                ),
+                False,
+            )
+            for output_name in output_names
+        ]
+
         updates = {
             output_name: ee.Algorithms.If(
                 ee.Algorithms.IsEqual(feature.get(output_name), None),
@@ -278,6 +293,7 @@ def fill_missing_values_from_centroid(
             )
             for output_name in output_names
         }
+        updates["used_centroid_fallback"] = ee.List(fallback_checks).contains(True)
 
         return feature.set(updates)
 
@@ -329,6 +345,11 @@ def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any]
             "month": month if month is not None else "",
             "units": product.get("output_units"),
             "value": value,
+            "used_centroid_fallback": ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+                False,
+                feature.get("used_centroid_fallback"),
+            ),
         }
     )
 
@@ -395,6 +416,11 @@ def clean_multi_product_feature(
             "period": "monthly" if month is not None else "annual",
             "year": year if year is not None else "",
             "month": month if month is not None else "",
+            "used_centroid_fallback": ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+                False,
+                feature.get("used_centroid_fallback"),
+            ),
         }
     )
 
