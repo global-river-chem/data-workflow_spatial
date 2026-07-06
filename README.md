@@ -53,11 +53,10 @@ Product periods:
 Record-length decision still needed:
 - first cross-product annual pull: 2001-2022, because this is the shared window across ERA5-Land, MODIS, and GLC_FCS30D
 - longer ERA5-Land-only pull: possible for 1950-2025, but we need to decide whether those extra years are useful without matching MODIS and land-cover products
-- monthly ERA5-Land pull: planned, but needs chunking by year or multi-year block before launching long records
+- monthly ERA5-Land pull: planned, but run it in smaller year blocks so it stays easy to check and restart
 
 ERA5-Land band options:
 - selected now: `total_precipitation_sum`, `temperature_2m`, `total_evaporation_sum`, `potential_evaporation_sum`, `snow_cover`, `snow_depth_water_equivalent`
 - other available bands are listed in the Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
-- note from the catalog: the three component evaporation bands have a known swap issue in the ECMWF source data, so avoid those unless we specifically need them and check them carefully
 
 Note: the current Earth Engine asset was uploaded from the zipped shapefile. Earth Engine shortened some field names during upload, so the uploaded run-group field is `run_grp`.
