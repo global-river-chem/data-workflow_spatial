@@ -38,11 +38,11 @@ Basic flow:
 7. Download exported CSVs and check them with `src/gee_spatial/checks.py`
 
 Current first pull:
-- watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/silica_gee_watersheds_20260629_shapefile.zip`
-- geometry check: `spatial-data-files/gee/earth-engine-input-files/20260629-gee-watersheds/watershed-geometry-check_20260629.csv`
+- watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/silica_gee_watersheds_20260706_shapefile.zip`
+- geometry check: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/watershed-geometry-check_20260706.csv`
 - active run: `era5_land_annual_overlap_2001_2022`
 - current test size: 2 annual exports, starting with `batch_001` for 2001 and 2002
-- drainage area note: `expected_area_km2` comes from the active wide spatial file, with `drainSqKm` from the site reference table as a fallback; new exports include `drainage_area_source` so this is visible row by row
+- drainage area note: `expected_area_km2` comes from the active wide spatial file, with `drainSqKm` from the site reference table and polygon geometry as fallbacks; new exports include `drainage_area_source` so this is visible row by row
 - reason for this window: 2001-2022 is the shared annual window for ERA5-Land, MODIS NPP/greenup, and GLC_FCS30D land cover
 - ERA5-Land columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`
 - snow cover note: the first pilot exports came through on a 0-100 scale, so the config now divides `snow_cover` by 100; rerun 2001 and 2002 before scaling up so all ERA5-Land outputs use the same fraction units
@@ -70,4 +70,4 @@ ERA5-Land band options:
 - other available bands are listed in the Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
 - the ERA5 export column list now follows the products listed for the run, so added bands will be exported instead of dropped
 
-Note: the current Earth Engine asset was uploaded from the zipped shapefile. Earth Engine shortened some field names during upload, so the uploaded run-group field is `run_grp`.
+Note: the current Earth Engine asset is uploaded from the zipped shapefile. Earth Engine shortens some field names during upload, so the uploaded run-group field is `run_grp`.

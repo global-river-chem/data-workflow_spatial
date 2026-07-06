@@ -271,13 +271,23 @@ out$drainage_area_source <- ifelse(
   expected_area_source_from_wide,
   out$drainage_area_source
 )
-out$drain_src <- out$drainage_area_source
 
 computed_polygon_area_km2 <- as.numeric(st_area(st_transform(out, 5070))) / 1e6
 out$polygon_area_km2 <- dplyr::coalesce(
   suppressWarnings(as.numeric(out$polygon_area_km2)),
   computed_polygon_area_km2
 )
+fills_expected_area_from_geometry <- is.na(out$expected_area_km2) & !is.na(out$polygon_area_km2)
+out$expected_area_km2 <- dplyr::coalesce(
+  out$expected_area_km2,
+  out$polygon_area_km2
+)
+out$drainage_area_source <- ifelse(
+  fills_expected_area_from_geometry,
+  "polygon_geometry",
+  out$drainage_area_source
+)
+out$drain_src <- out$drainage_area_source
 out$tiny_ws <- !is.na(out$polygon_area_km2) & out$polygon_area_km2 <= tiny_watershed_area_km2
 
 wide_order <- match(out$.site_key, wide$.site_key)

@@ -4,12 +4,12 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## Current Watershed Set
 
-- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_20260629`
-- Geometry check file: `watershed-geometry-check_20260629.csv`
+- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_20260706`
+- Geometry check file: `watershed-geometry-check_20260706.csv`
 - Matched watershed rows in the current asset file: 497
-- Run groups: 47
+- Run groups: 49
 - `expected_area_km2` is the drainage area used for run grouping and checks.
-- `drainage_area_source` says where that drainage area came from: the active wide spatial file, the site reference table, or the base watershed file.
+- `drainage_area_source` says where that drainage area came from: the active wide spatial file, the site reference table, the base watershed file, or polygon geometry.
 - Tiny watersheds are marked with `tiny_watershed`.
 - Rows filled from centroid sampling are marked with `used_centroid_fallback`.
 
@@ -25,16 +25,16 @@ Expected task counts with the current 497-row watershed asset:
 
 | Run | Years | Run groups | Export files/tasks | Exported site-period rows |
 |---|---:|---:|---:|---:|
-| ERA5 annual, 2001-2022 overlap | 22 | 47 | 1,034 | 10,934 |
-| ERA5 annual, 1950-2025 full | 76 | 47 | 3,572 | 37,772 |
-| ERA5 monthly, 1950-2025 full, bundled by year | 76 | 47 | 3,572 | 453,264 |
-| ERA5 monthly, 1950-2025 full, one task per month | 912 | 47 | 42,864 | 453,264 |
+| ERA5 annual, 2001-2022 overlap | 22 | 49 | 1,078 | 10,934 |
+| ERA5 annual, 1950-2025 full | 76 | 49 | 3,724 | 37,772 |
+| ERA5 monthly, 1950-2025 full, bundled by year | 76 | 49 | 3,724 | 453,264 |
+| ERA5 monthly, 1950-2025 full, one task per month | 912 | 49 | 44,688 | 453,264 |
 
 So the monthly run should use `monthly_by_year`. It creates the same number of rows as a one-file-per-month approach, but far fewer files and tasks.
 
 If we later add weekly or daily ERA5-Land outputs for the same 1950-2025 window, the row counts get much larger: about 1,964,144 site-week rows or 13,796,223 site-day rows. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
 
-Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. That means we should not queue a whole 3,572-task full run in one sitting. Use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
+Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. That means we should not queue a whole 3,724-task full run in one sitting. Use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
 
 Use this command to estimate any configured run:
 
