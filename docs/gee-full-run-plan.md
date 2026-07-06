@@ -30,6 +30,8 @@ Expected task counts with the current 497-row watershed asset:
 
 So the monthly run should use `monthly_by_year`. It creates the same number of rows as a one-file-per-month approach, but far fewer files and tasks.
 
+If we later add weekly or daily ERA5-Land outputs for the same 1950-2025 window, the row counts get much larger: about 1,964,144 site-week rows or 13,796,223 site-day rows. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
+
 Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. That means we should not queue a whole 3,572-task full run in one sitting. Use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
 
 Use this command to estimate any configured run:
@@ -45,6 +47,32 @@ python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --minutes-per-task
 ```
 
 That converts the task count into a rough time estimate using two concurrent Earth Engine batch tasks.
+
+## Wall-Clock Timing
+
+The Colab notebook writes a timing CSV while export tasks run:
+
+```text
+timing-logs/gee_task_timing_<active_run>_<timestamp>.csv
+```
+
+Each row records the export name, run group, period, year/month, selected watershed rows, site-period rows, product fields, launch time, last checked time, finish time, elapsed minutes, task state, and any task error message.
+
+Use that file to estimate larger runs:
+
+```bash
+python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing_era5_land_monthly_year_pilot_YYYYMMDDTHHMMSSZ.csv
+```
+
+You can filter the timing rows if a log has mixed runs:
+
+```bash
+python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing.csv --timing-mode era5_land --timing-period monthly_by_year
+```
+
+For true per-variable timing, run a one-band pilot. If several ERA5-Land bands are exported together, the timing row describes that multi-band export, not the separate cost of each band.
+
+Weekly and daily outputs are not configured yet. Once we add them, the same timing pattern should work: run a small pilot, write the timing CSV, then feed that observed runtime into `scripts/plan-gee-runs.py`.
 
 ## Recommended Order
 

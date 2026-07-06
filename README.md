@@ -61,6 +61,7 @@ Record-length plan:
 
 Full-run planning:
 - use `docs/gee-full-run-plan.md` for task counts, rough timing, and upload notes
+- the Colab notebook writes a wall-clock timing CSV in `timing-logs/` while tasks run
 - current full ERA5-Land configs are present but `launch_export: false`
 - Drive is the default export destination; Cloud Storage can be switched on in `config/gee-assets.yml` for longer runs
 

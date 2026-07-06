@@ -22,6 +22,7 @@ from src.gee_spatial.runs import build_run_list
 
 DEFAULT_CONCURRENT_BATCH_TASKS = 2
 READY_QUEUE_LIMIT = 3000
+FINISHED_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -189,6 +190,42 @@ def format_hours(tasks: int, minutes_per_task: float | None) -> str:
     return f"{waves:,} two-task waves, about {hours:,.1f} hours at {minutes_per_task:g} min/task"
 
 
+def product_label(row: dict[str, Any]) -> str:
+    return row.get("product") or row.get("products") or row.get("mode") or ""
+
+
+def observed_minutes_per_task(
+    timing_log_path: Path,
+    mode: str | None = None,
+    period: str | None = None,
+    product: str | None = None,
+) -> tuple[float, int]:
+    values = []
+
+    with timing_log_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            if row.get("state") not in FINISHED_STATES:
+                continue
+            if mode and row.get("mode") != mode:
+                continue
+            if period and row.get("period") != period:
+                continue
+            if product and product not in product_label(row).split("|"):
+                continue
+
+            elapsed = row.get("elapsed_min")
+            if elapsed in {None, ""}:
+                continue
+
+            values.append(float(elapsed))
+
+    if not values:
+        raise ValueError(f"No finished timing rows matched the requested filters in {timing_log_path}")
+
+    return sum(values) / len(values), len(values)
+
+
 def describe_run(
     run_name: str,
     run_config: dict[str, Any],
@@ -258,6 +295,10 @@ def main() -> None:
         type=float,
         help="Optional observed task runtime to turn the two-task wave count into rough hours",
     )
+    parser.add_argument("--timing-log", help="Use a notebook timing CSV to estimate minutes per task")
+    parser.add_argument("--timing-mode", help="Use only timing rows with this mode")
+    parser.add_argument("--timing-period", help="Use only timing rows with this period")
+    parser.add_argument("--timing-product", help="Use only timing rows for this product or product set")
     args = parser.parse_args()
 
     run_config = load_yaml(ROOT / "config" / "run-list.yml")
@@ -266,6 +307,17 @@ def main() -> None:
     geometry_check = Path(asset_config["watersheds"]["geometry_check"]).expanduser()
     preferred_group_column = run_config.get("site_groups", {}).get("column", "run_group")
     group_counts = load_group_counts(geometry_check, preferred_group_column)
+    minutes_per_task = args.minutes_per_task
+
+    if args.timing_log and minutes_per_task is None:
+        minutes_per_task, timing_n = observed_minutes_per_task(
+            timing_log_path=Path(args.timing_log).expanduser(),
+            mode=args.timing_mode,
+            period=args.timing_period,
+            product=args.timing_product,
+        )
+        print(f"Using {minutes_per_task:.2f} min/task from {timing_n} timing rows")
+        print()
 
     run_names = list((run_config.get("runs") or {}).keys())
     if args.run:
@@ -278,7 +330,7 @@ def main() -> None:
             run_name=run_name,
             run_config=run_config,
             group_counts=group_counts,
-            minutes_per_task=args.minutes_per_task,
+            minutes_per_task=minutes_per_task,
         )
         for run_name in run_names
     ]
