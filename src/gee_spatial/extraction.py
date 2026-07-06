@@ -348,6 +348,19 @@ def tiny_watershed_value(feature, threshold_km2: float = TINY_WATERSHED_AREA_KM2
     )
 
 
+def polygon_area_km2_value(feature):
+    import ee
+
+    existing_value = get_first_property(feature, PROPERTY_NAMES["polygon_area_km2"])
+    geometry_area_km2 = feature.geometry().area(1).divide(1000000)
+
+    return ee.Algorithms.If(
+        ee.Algorithms.IsEqual(existing_value, None),
+        geometry_area_km2,
+        existing_value,
+    )
+
+
 def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any], year, month):
     import ee
 
@@ -369,6 +382,7 @@ def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any]
         output_name: get_first_property(feature, source_names)
         for output_name, source_names in PROPERTY_NAMES.items()
     }
+    properties["polygon_area_km2"] = polygon_area_km2_value(feature)
     properties["tiny_watershed"] = tiny_watershed_value(feature)
     properties.update(
         {
@@ -466,6 +480,7 @@ def clean_multi_product_feature(
         output_name: get_first_property(feature, source_names)
         for output_name, source_names in PROPERTY_NAMES.items()
     }
+    properties["polygon_area_km2"] = polygon_area_km2_value(feature)
     properties["tiny_watershed"] = tiny_watershed_value(feature)
     properties.update(
         {
