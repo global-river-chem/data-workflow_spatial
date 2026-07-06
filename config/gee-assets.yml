@@ -2,7 +2,7 @@ earth_engine:
   project: silica-synthesis
 
 watersheds:
-  asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_20260706
+  asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_20260706_shapefile
   id_column: site_id
   run_group_column: run_group
   earth_engine_run_group_column: run_grp

@@ -4,7 +4,7 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## Current Watershed Set
 
-- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_20260706`
+- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_20260706_shapefile`
 - Geometry check file: `watershed-geometry-check_20260706.csv`
 - Matched watershed rows in the current asset file: 497
 - Run groups: 49
