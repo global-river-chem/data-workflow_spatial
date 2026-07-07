@@ -30,7 +30,7 @@ EXPORT_COLUMNS = [
     "month",
     "units",
     "value",
-    "used_centroid_fallback",
+    "used_fine_scale_fallback",
 ]
 
 
@@ -67,7 +67,7 @@ ERA5_DEFAULT_VALUE_COLUMNS = [
 ERA5_EXPORT_COLUMNS = [
     *ERA5_METADATA_COLUMNS,
     *ERA5_DEFAULT_VALUE_COLUMNS,
-    "used_centroid_fallback",
+    "used_fine_scale_fallback",
 ]
 
 
@@ -264,42 +264,51 @@ def summarize_image_by_watersheds(
         if crs is not None:
             kwargs["crs"] = crs
 
-        values = image.clip(feature.geometry()).reduceRegion(**kwargs)
+        values = image.reduceRegion(**kwargs)
         return feature.set(values)
 
     return watersheds.map(summarize_feature)
 
 
-def fill_missing_values_from_centroid(
+def fallback_scale_value(scale: Optional[float], divisor: int = 10):
+    if scale is None:
+        return None
+
+    return scale / divisor
+
+
+def fill_missing_values_at_fine_scale(
     summary,
     image,
     output_names: list[str],
     reducer=None,
     scale: Optional[float] = None,
+    fine_scale: Optional[float] = None,
     tile_scale: int = 4,
 ):
     import ee
 
     export_reducer = reducer or ee.Reducer.mean()
+    retry_scale = fine_scale if fine_scale is not None else fallback_scale_value(scale)
 
     def fill_feature(feature):
         kwargs = {
             "reducer": export_reducer,
-            "geometry": feature.geometry().centroid(1),
+            "geometry": feature.geometry(),
             "tileScale": tile_scale,
             "maxPixels": 100000000,
         }
 
-        if scale is not None:
-            kwargs["scale"] = scale
+        if retry_scale is not None:
+            kwargs["scale"] = retry_scale
 
-        centroid_values = image.reduceRegion(**kwargs)
+        fine_scale_values = image.reduceRegion(**kwargs)
 
         fallback_checks = [
             ee.Algorithms.If(
                 ee.Algorithms.IsEqual(feature.get(output_name), None),
                 ee.Algorithms.If(
-                    ee.Algorithms.IsEqual(centroid_values.get(output_name), None),
+                    ee.Algorithms.IsEqual(fine_scale_values.get(output_name), None),
                     False,
                     True,
                 ),
@@ -311,12 +320,12 @@ def fill_missing_values_from_centroid(
         updates = {
             output_name: ee.Algorithms.If(
                 ee.Algorithms.IsEqual(feature.get(output_name), None),
-                centroid_values.get(output_name),
+                fine_scale_values.get(output_name),
                 feature.get(output_name),
             )
             for output_name in output_names
         }
-        updates["used_centroid_fallback"] = ee.List(fallback_checks).contains(True)
+        updates["used_fine_scale_fallback"] = ee.List(fallback_checks).contains(True)
 
         return feature.set(updates)
 
@@ -396,10 +405,10 @@ def clean_continuous_feature(feature, product_name: str, product: Dict[str, Any]
             "month": month if month is not None else "",
             "units": product.get("output_units"),
             "value": value,
-            "used_centroid_fallback": ee.Algorithms.If(
-                ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+            "used_fine_scale_fallback": ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get("used_fine_scale_fallback"), None),
                 False,
-                feature.get("used_centroid_fallback"),
+                feature.get("used_fine_scale_fallback"),
             ),
         }
     )
@@ -447,7 +456,7 @@ def era5_export_columns(
     return [
         *ERA5_METADATA_COLUMNS,
         *value_columns,
-        "used_centroid_fallback",
+        "used_fine_scale_fallback",
     ]
 
 
@@ -490,10 +499,10 @@ def clean_multi_product_feature(
             "period": "monthly" if month is not None else "annual",
             "year": year if year is not None else "",
             "month": month if month is not None else "",
-            "used_centroid_fallback": ee.Algorithms.If(
-                ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+            "used_fine_scale_fallback": ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get("used_fine_scale_fallback"), None),
                 False,
-                feature.get("used_centroid_fallback"),
+                feature.get("used_fine_scale_fallback"),
             ),
         }
     )
@@ -523,7 +532,7 @@ def extract_continuous_product(
         reducer=ee_reducer(product.get("reducer", "mean")),
         scale=scale,
     )
-    summary = fill_missing_values_from_centroid(
+    summary = fill_missing_values_at_fine_scale(
         summary=summary,
         image=image,
         output_names=[product.get("output_name", "value")],
@@ -564,7 +573,7 @@ def extract_era5_land_products(
         get_product(products_config, product_name).get("output_name")
         for product_name in selected_products
     ]
-    summary = fill_missing_values_from_centroid(
+    summary = fill_missing_values_at_fine_scale(
         summary=summary,
         image=image,
         output_names=output_names,
