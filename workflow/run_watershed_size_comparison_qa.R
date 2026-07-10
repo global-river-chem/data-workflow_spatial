@@ -14,7 +14,7 @@ env_bool <- function(name, default) {
 
 # Settings ---------------------------------------------------------------
 
-run_label <- "comparison_sites_fine_scale"
+run_label <- "comparison_sites_fine_scale_snow8day"
 comparison_slug <- "watershed_size_comparison"
 plot_subject <- "Watershed-size comparison sites"
 start_year <- 2001
@@ -24,7 +24,7 @@ drive_account <- "bushsi@oregonstate.edu"
 drive_export_folder_id <- "1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX"
 drive_output_folder_id <- "1hYedMgoR1907nwtOjjjqYFzjG28gk3-T"
 
-drive_export_subfolder <- "watershed_size_gee_exports_2001_2023"
+drive_export_subfolder <- "watershed_size_gee_exports_snow8day_2001_2023"
 drive_qa_subfolder <- "watershed_size_qa"
 drive_plot_folder <- "plots"
 drive_csv_folder <- "tables"
@@ -127,9 +127,10 @@ expected_csv_names <- paste0(
   run_label,
   "_watershed_extract.csv"
 )
+snow_comparison_column <- "snow_cover_max_8day_watershed_fraction"
 local_export_folder <- file.path(
   box_gee_output_root,
-  paste0("gee_exports_watershed_size_", today_tag),
+  paste0("gee_exports_watershed_size_snow8day_", today_tag),
   paste0("era5_", start_year, "_", end_year)
 )
 output_folder <- file.path(
@@ -239,6 +240,44 @@ find_drive_file_in_folder <- function(file_name, folder_id) {
   )
 }
 
+drive_modified_time <- function(files) {
+  as.POSIXct(
+    vapply(
+      files$drive_resource,
+      function(resource) {
+        if (is.null(resource$modifiedTime)) {
+          return(NA_character_)
+        }
+        resource$modifiedTime
+      },
+      character(1)
+    ),
+    format = "%Y-%m-%dT%H:%M:%OSZ",
+    tz = "UTC"
+  )
+}
+
+latest_drive_match <- function(files) {
+  if (!nrow(files)) {
+    return(files)
+  }
+
+  files[order(drive_modified_time(files), decreasing = TRUE, na.last = TRUE), , drop = FALSE][1, , drop = FALSE]
+}
+
+find_latest_drive_export <- function(file_name, folder_ids) {
+  folder_matches <- lapply(unique(folder_ids), function(folder_id) {
+    find_drive_file_in_folder(file_name, folder_id)
+  })
+  matches <- bind_rows(folder_matches)
+
+  if (!nrow(matches)) {
+    matches <- googledrive::drive_find(pattern = exact_pattern(file_name), n_max = 25)
+  }
+
+  latest_drive_match(matches)
+}
+
 find_drive_child_folder <- function(folder_name, parent) {
   folder_name <- as.character(folder_name[[1]])
   folder_contents <- googledrive::drive_ls(parent)
@@ -291,33 +330,15 @@ organize_drive_exports <- function() {
   missing <- character(0)
 
   for (file_name in expected_csv_names) {
-    in_run_folder <- find_drive_file_in_folder(file_name, run_folder$id[[1]])
-    if (nrow(in_run_folder)) {
-      message("Already in run folder: ", file_name)
-      next
-    }
-
-    found_in_source_folder <- FALSE
-    for (source_folder_id in source_folder_ids) {
-      matches <- find_drive_file_in_folder(file_name, source_folder_id)
-      if (!nrow(matches)) {
-        next
+    match <- find_latest_drive_export(file_name, source_folder_ids)
+    if (nrow(match)) {
+      parent_ids <- as.character(unlist(match$drive_resource[[1]]$parents))
+      if (run_folder$id[[1]] %in% parent_ids) {
+        message("Already in run folder: ", file_name)
+      } else {
+        googledrive::drive_mv(match[1, ], path = googledrive::as_id(run_folder))
+        message("Moved latest matching export to run folder: ", file_name)
       }
-
-      googledrive::drive_mv(matches[1, ], path = googledrive::as_id(run_folder))
-      message("Moved to run folder: ", file_name)
-      found_in_source_folder <- TRUE
-      break
-    }
-
-    if (found_in_source_folder) {
-      next
-    }
-
-    matches_anywhere <- googledrive::drive_find(pattern = exact_pattern(file_name), n_max = 25)
-    if (nrow(matches_anywhere)) {
-      googledrive::drive_mv(matches_anywhere[1, ], path = googledrive::as_id(run_folder))
-      message("Moved to run folder from search: ", file_name)
       next
     }
 
@@ -347,7 +368,7 @@ download_drive_exports <- function(run_folder_id) {
       next
     }
 
-    matches <- find_drive_file_in_folder(file_name, run_folder_id)
+    matches <- latest_drive_match(find_drive_file_in_folder(file_name, run_folder_id))
     if (!nrow(matches)) {
       missing <- c(missing, file_name)
       next
@@ -458,10 +479,19 @@ if (!"used_centroid_fallback" %in% names(era5_raw)) {
   era5_raw$used_centroid_fallback <- NA
 }
 
-if (!"used_fine_scale_fallback" %in% names(era5_raw)) {
+missing_era5_columns <- setdiff(
+  c("used_fine_scale_fallback", snow_comparison_column),
+  names(era5_raw)
+)
+
+if (length(missing_era5_columns)) {
   stop(
-    "The ERA5-Land files do not include used_fine_scale_fallback. ",
-    "These are not the corrected small-watershed exports from the Colab notebook.",
+    "The ERA5-Land files are missing required columns: ",
+    paste(missing_era5_columns, collapse = ", "),
+    ". This usually means the QA script found stale exports instead of the corrected snow8day Colab exports. ",
+    "Re-run the watershed-size comparison Colab and confirm the Export columns line includes ",
+    snow_comparison_column,
+    ".",
     call. = FALSE
   )
 }
@@ -495,7 +525,6 @@ reference_drivers <- read_csv(reference_driver_path, show_col_types = FALSE) %>%
     Stream_Name = toupper(Stream_Name)
   )
 
-snow_comparison_column <- "snow_cover_max_8day_watershed_fraction"
 modis_et_cols <- grep("^evapotrans_[0-9]{4}_kg_m2$", names(reference_drivers), value = TRUE)
 modis_snow_cols <- grep("^snow_[0-9]{4}_max_prop_area$", names(reference_drivers), value = TRUE)
 noaa_temp_cols <- grep("^temp_[0-9]{4}_degC$", names(reference_drivers), value = TRUE)
