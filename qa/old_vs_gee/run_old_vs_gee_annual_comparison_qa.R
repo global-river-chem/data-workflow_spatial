@@ -4,7 +4,11 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
-args <- commandArgs(trailingOnly = TRUE)
+args <- get0(
+  "OLD_VS_GEE_QA_ARGS",
+  ifnotfound = commandArgs(trailingOnly = TRUE),
+  inherits = TRUE
+)
 
 get_arg <- function(flag, default = NULL) {
   hit <- which(args == flag)
@@ -32,7 +36,7 @@ first_existing_dir <- function(paths) {
 }
 
 env_pair <- function(name, value) {
-  paste0(name, "=", shQuote(as.character(value)))
+  setNames(as.character(value), name)
 }
 
 default_drive_subfolder <- function(slug) {
@@ -365,14 +369,22 @@ if (!skip_comparison) {
     env <- c(env, env_pair("SILICA_REFERENCE_DRIVER_PATH", reference_driver_path))
   }
 
-  status <- system2(
-    "Rscript",
-    "qa/old_vs_gee/plot_old_vs_gee_era5_comparison.R",
-    env = env
-  )
-  if (!identical(status, 0L)) {
-    stop("Comparison plotting script failed.", call. = FALSE)
+  old_env <- Sys.getenv(names(env), unset = NA_character_)
+  restore_env <- function() {
+    for (name in names(old_env)) {
+      if (is.na(old_env[[name]])) {
+        Sys.unsetenv(name)
+      } else {
+        do.call(Sys.setenv, as.list(setNames(old_env[[name]], name)))
+      }
+    }
   }
+
+  do.call(Sys.setenv, as.list(env))
+  tryCatch(
+    source("qa/old_vs_gee/plot_old_vs_gee_era5_comparison.R", local = TRUE),
+    finally = restore_env()
+  )
 }
 
 comparison_points_file <- file.path(

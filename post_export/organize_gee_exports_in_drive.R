@@ -2,7 +2,11 @@ suppressPackageStartupMessages({
   library(googledrive)
 })
 
-args <- commandArgs(trailingOnly = TRUE)
+args <- get0(
+  "GEE_EXPORT_ORGANIZE_ARGS",
+  ifnotfound = commandArgs(trailingOnly = TRUE),
+  inherits = TRUE
+)
 
 get_arg <- function(flag, default = "") {
   hit <- which(args == flag)

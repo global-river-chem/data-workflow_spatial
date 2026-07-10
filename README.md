@@ -36,11 +36,11 @@ This repo is for the GEE workflow. Older APPEEARS/NASA/Aurora spatial extraction
 - Rows filled by the retry are flagged with `used_fine_scale_fallback`.
 - Run-group chunks are a fallback if all-sites-by-year exports are too large.
 
-## Local R Commands
+## Local R Scripts
 
-```bash
-Rscript scripts/check-product-config.R
-Rscript scripts/plan-gee-runs.R
-Rscript qa/old_vs_gee/run_watershed_size_comparison_qa.R
-Rscript inventory/build_all_sites_annual_inventory.R
-```
+Open these from the repo root in RStudio:
+
+- `scripts/check-product-config.R`
+- `scripts/plan-gee-runs.R`
+- `qa/old_vs_gee/run_watershed_size_old_vs_gee_qa.R`
+- `inventory/build_all_sites_annual_inventory.R`
