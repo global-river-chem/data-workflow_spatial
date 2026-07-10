@@ -19,7 +19,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: precip_mm
@@ -45,7 +45,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: temp_degC
@@ -71,7 +71,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: evapotrans_mm
@@ -97,7 +97,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: potential_evap_mm
@@ -123,7 +123,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: snow_cover_fraction
@@ -149,7 +149,7 @@ products:
       - annual
     available_start_date: 1950-01-02
     available_end_date_checked: 2026-06-22
-    export_start_year: 1950
+    export_start_year: 2000
     export_end_year: 2025
     reducer: mean
     output_name: snow_water_equiv_mm

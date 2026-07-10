@@ -1,6 +1,6 @@
 # GEE Full Run Plan
 
-This note is for scaling the current Earth Engine pilot to all current watershed rows and the longer ERA5-Land record.
+This note is for scaling the current Earth Engine pilot to all current watershed rows for the annual ERA5-Land workflow.
 
 ## Current Watershed Set
 
@@ -15,7 +15,7 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## ERA5-Land Runs
 
-The full ERA5-Land annual run is now listed as `era5_land_annual_full_1950_2025`.
+The full ERA5-Land annual run is listed as `era5_land_annual_full_2000_2025`.
 
 The full monthly run is listed as `era5_land_monthly_full`, but it uses `monthly_by_year` timing. That means one export file contains all 12 months for one year and one run group.
 
@@ -26,26 +26,26 @@ Expected task counts with the current 497-row watershed asset:
 | Run | Years | Run groups | Export files/tasks | Exported site-period rows |
 |---|---:|---:|---:|---:|
 | ERA5 annual, 2001-2022 overlap | 22 | 49 | 1,078 | 10,934 |
-| ERA5 annual, 1950-2025 full | 76 | 49 | 3,724 | 37,772 |
-| ERA5 monthly, 1950-2025 full, bundled by year | 76 | 49 | 3,724 | 453,264 |
-| ERA5 monthly, 1950-2025 full, one task per month | 912 | 49 | 44,688 | 453,264 |
+| ERA5 annual, 2000-2025 full | 26 | 49 | 1,274 | 12,922 |
+| ERA5 monthly, 2000-2025 full, bundled by year | 26 | 49 | 1,274 | 155,064 |
+| ERA5 monthly, 2000-2025 full, one task per month | 312 | 49 | 15,288 | 155,064 |
 
 So the monthly run should use `monthly_by_year`. It creates the same number of rows as a one-file-per-month approach, but far fewer files and tasks.
 
-If we later add weekly or daily ERA5-Land outputs for the same 1950-2025 window, the row counts get much larger: about 1,964,144 site-week rows or 13,796,223 site-day rows. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
+If we later add weekly or daily ERA5-Land outputs for the same 2000-2025 window, the row counts get much larger. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
 
-Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. That means we should not queue a whole 3,724-task full run in one sitting. Use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
+Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. Even for the 1,274-task 2000-2025 full run, use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
 
 Use this command to estimate any configured run:
 
 ```bash
-python3 scripts/plan-gee-runs.py --run era5_land_monthly_full
+Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full
 ```
 
 Once a pilot task finishes, add the observed average runtime:
 
 ```bash
-python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --minutes-per-task 10
+Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --minutes-per-task 10
 ```
 
 That converts the task count into a rough time estimate using two concurrent Earth Engine batch tasks.
@@ -63,26 +63,26 @@ Each row records the export name, run group, period, year/month, selected waters
 Use that file to estimate larger runs:
 
 ```bash
-python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing_era5_land_monthly_year_pilot_YYYYMMDDTHHMMSSZ.csv
+Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing_era5_land_monthly_year_pilot_YYYYMMDDTHHMMSSZ.csv
 ```
 
 You can filter the timing rows if a log has mixed runs:
 
 ```bash
-python3 scripts/plan-gee-runs.py --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing.csv --timing-mode era5_land --timing-period monthly_by_year
+Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing.csv --timing-mode era5_land --timing-period monthly_by_year
 ```
 
 For true per-variable timing, run a one-band pilot. If several ERA5-Land bands are exported together, the timing row describes that multi-band export, not the separate cost of each band.
 
-Weekly and daily outputs are not configured yet. Once we add them, the same timing pattern should work: run a small pilot, write the timing CSV, then feed that observed runtime into `scripts/plan-gee-runs.py`.
+Weekly and daily outputs are not configured yet. Once we add them, the same timing pattern should work: run a small pilot, write the timing CSV, then feed that observed runtime into `scripts/plan-gee-runs.R`.
 
 ## Recommended Order
 
-1. Rerun the small ERA5 annual pilot after the snow-cover and small-watershed fixes.
-2. Run `era5_land_monthly_year_pilot` for one group and one year.
-3. If both checks look good, run the 2001-2022 annual overlap across all groups.
-4. Run the full ERA5 annual record in chunks.
-5. Run the full ERA5 monthly record in `monthly_by_year` chunks.
+1. Run a one- or two-year smoke test from `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`.
+2. If the smoke test finishes cleanly, run the full annual ERA5-Land workflow for 2000-2025.
+3. Run the watershed-size comparison notebook and local QA when we need old-vs-GEE comparison plots/tables.
+4. Run `era5_land_monthly_year_pilot` for one group and one year before any monthly scale-up.
+5. Run the full ERA5 monthly record in `monthly_by_year` chunks only after the monthly pilot checks out.
 6. Then add MODIS annual products, land cover, elevation, soils, lithology, permafrost, and the selected human-impact layers.
 
 ## Cloud Storage

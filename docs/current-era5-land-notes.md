@@ -6,10 +6,11 @@ This note holds the current run details that used to make the main README too lo
 
 - Watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/silica_gee_watersheds_20260706_shapefile.zip`
 - Geometry check: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/watershed-geometry-check_20260706.csv`
-- Active run: `era5_land_annual_overlap_2001_2022`
-- Current test size: 2 annual exports, starting with `batch_001` for 2001 and 2002
+- Active full annual run: `era5_land_annual_full_2000_2025`
+- Shared comparison-window run: `era5_land_annual_overlap_2001_2022`
 - Drainage area: `expected_area_km2` comes from the active wide spatial file, with `drainSqKm` from the site reference table and polygon geometry as fallbacks.
 - New exports include `drainage_area_source` so drainage-area provenance is visible row by row.
+- Full annual ERA5-Land workflow: 2000-2025.
 - Shared comparison window: 2001-2022 for ERA5-Land, MODIS NPP/greenup, and GLC_FCS30D land cover.
 - ERA5-Land output columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`.
 - Snow cover: early pilot exports came through on a 0-100 scale; config now divides `snow_cover` by 100 so outputs use fraction units.

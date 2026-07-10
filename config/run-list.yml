@@ -5,7 +5,7 @@ site_groups:
   suggested_sites_per_group: 25-50
   notes: Put very large watersheds in smaller groups before launching full exports
 
-active_run: era5_land_annual_overlap_2001_2022
+active_run: era5_land_annual_full_2000_2025
 launch:
   start_at: 0
   max_tasks_per_session: 2
@@ -23,6 +23,22 @@ outputs:
   notes: Daily or weekly outputs can be added later from daily source products when needed
 
 runs:
+  era5_land_annual_full_2000_2025:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+    timing: annual
+    start_year: 2000
+    end_year: 2025
+    run_groups: all
+    launch_export: true
+    notes: Current full annual ERA5-Land pull for all watersheds
+
   era5_land_annual_overlap_2001_2022:
     mode: era5_land
     products:
@@ -36,24 +52,8 @@ runs:
     start_year: 2001
     end_year: 2022
     run_groups: all
-    launch_export: true
-    notes: First real annual pull using the shared window for ERA5-Land, MODIS, and GLC_FCS30D
-
-  era5_land_annual_full_1950_2025:
-    mode: era5_land
-    products:
-      - precip
-      - temp
-      - evapotrans
-      - potential_evap
-      - snow_cover
-      - snow_water_equiv
-    timing: annual
-    start_year: 1950
-    end_year: 2025
-    run_groups: all
     launch_export: false
-    notes: All current watersheds for the full ERA5-Land annual window; run after the overlap pull checks out
+    notes: Shared comparison window for ERA5-Land, MODIS, and GLC_FCS30D
 
   modis_annual_overlap_2001_2022:
     mode: single_product
@@ -140,7 +140,7 @@ runs:
       - snow_cover
       - snow_water_equiv
     timing: monthly_by_year
-    start_year: 1950
+    start_year: 2000
     end_year: 2025
     months: all
     run_groups: all
