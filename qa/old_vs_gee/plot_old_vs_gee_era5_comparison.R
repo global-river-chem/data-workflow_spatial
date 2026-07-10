@@ -554,8 +554,13 @@ authenticate_drive <- function() {
 
 # Reuse a Drive folder when it exists; otherwise make it.
 drive_child_folder <- function(folder_name, parent) {
-  folder_matches <- googledrive::drive_ls(parent) %>%
-    filter(name == folder_name)
+  folder_name <- as.character(folder_name[[1]])
+  folder_contents <- googledrive::drive_ls(parent)
+  folder_matches <- folder_contents[
+    as.character(folder_contents$name) == folder_name,
+    ,
+    drop = FALSE
+  ]
 
   if (nrow(folder_matches) > 0) {
     return(folder_matches[1, ])

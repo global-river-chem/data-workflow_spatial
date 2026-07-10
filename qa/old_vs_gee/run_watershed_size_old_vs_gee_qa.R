@@ -78,8 +78,8 @@ reference_driver_path <- Sys.getenv(
   unset = "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/appeears-nasa/all-data_si-extract_3_20260629.csv"
 )
 
-write_site_plots <- FALSE
-max_plot_sites <- 40
+write_site_plots <- TRUE
+max_plot_sites <- 80
 
 if (!file.exists(reference_driver_path)) {
   stop(
