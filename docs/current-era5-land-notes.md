@@ -23,11 +23,12 @@ This note holds the current run details that used to make the main README too lo
 - ERA5-Land daily aggregated: available from 1950-01-02 through near-current. The current annual workflow should start at 2000 unless a specific comparison run says otherwise.
 - MODIS annual NPP: 2001-2024.
 - MODIS greenup day: 2001-2023.
-- GLC_FCS30D annual land cover: 2000-2022.
+- GLC_FCS30D annual land cover: 1985-2022. We still need to confirm whether it will be updated past 2022 or whether we need a replacement for later years.
 
 ## Record-Length Plan
 
-- Cross-product annual comparison pull: 2001-2022, because this is the shared window across ERA5-Land, MODIS, and GLC_FCS30D.
+- Cross-product annual comparison pull: 2001-2022, because MODIS NPP/greenup start in 2001 and the current land-cover product stops in 2022.
+- If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics.
 - Current ERA5-Land annual workflow: 2000-2025.
 - Monthly ERA5-Land pull: use `monthly_by_year` timing, launch in chunks, and check the pilot before scaling up.
 - Wider ERA5-Land source availability can be revisited later, but do not treat 1950 as the default current workflow start.

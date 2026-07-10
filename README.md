@@ -2,36 +2,32 @@
 
 Google Earth Engine spatial extraction workflow for the global river chemistry project.
 
-This repo is for the GEE workflow. Older APPEEARS/NASA/Aurora spatial extraction work lives outside this repo.
+## Workflow Notes And Data Decisions
 
-## Start Here
-
-- Full annual ERA5-Land Colab: [run_all_sites_annual_era5_land_2000_2025.ipynb](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb)
-- Watershed-size comparison Colab: [run_watershed_size_comparison_sites_annual_era5_land.ipynb](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/notebooks/tests/watershed_size_comparison_sites/run_watershed_size_comparison_sites_annual_era5_land.ipynb)
-- AND tiny-watershed test Colab: [run_and_tiny_watersheds_annual_era5_land.ipynb](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/notebooks/tests/and_tiny_watersheds/run_and_tiny_watersheds_annual_era5_land.ipynb)
-- Current ERA5-Land notes: `docs/current-era5-land-notes.md`
-- Full-run planning notes: `docs/gee-full-run-plan.md`
-
-## Folder Map
-
-- `notebooks/full_runs/`: Colab notebooks for main GEE extraction runs.
-- `notebooks/tests/`: Colab notebooks for test/comparison extractions.
-- `src/gee_spatial/`: Python helpers used by the Colab GEE extraction notebooks.
-- `scripts/`: R setup and planning scripts.
-- `post_export/`: R scripts for organizing completed GEE exports.
-- `qa/`: R scripts for comparison plots and QA tables.
-- `inventory/`: R scripts for building query-ready output tables.
-- `config/`: run settings, product settings, and Earth Engine asset paths.
-- `docs/`: notes that are useful but too detailed for this README.
-- `gee-code/`: draft Earth Engine Code Editor scripts.
-
-## Current Notes
-
-- Current full annual ERA5-Land run: 2000-2025.
-- Current full annual run shape: one export per year for all selected sites.
-- Current full annual task count: 26 yearly exports.
-- Shared comparison window: 2001-2022.
-- ERA5-Land variables now included: precipitation, air temperature, actual evapotranspiration, potential evapotranspiration, snow cover fraction, and snow-water equivalent.
+- This workflow is still being tested and organized.
+- Colab notebooks are for Google Earth Engine extraction steps.
+- Local R scripts handle watershed inputs, post-export organization, QA, and inventory work.
+- Current annual ERA5-Land run being tested: 2000-2025.
+- Current annual ERA5-Land run shape: one export per year for all selected sites, which is 26 yearly exports.
+- ERA5-Land can go back to 1950. We are not using 1950 as the current default start year, but it is available if we decide to extend climate variables farther back.
+- Shared old-vs-GEE comparison window: 2001-2022.
+- The 2001-2022 comparison window is driven by overlap among ERA5-Land, MODIS NPP/greenup, and the current land-cover product.
+- ERA5-Land variables currently included: precipitation, air temperature, actual evapotranspiration, potential evapotranspiration, snow cover fraction, and snow-water equivalent.
+- MODIS NPP starts in 2001 and currently runs through 2024 in the workflow config.
+- MODIS greenup day starts in 2001 and currently runs through 2023 in the workflow config.
+- If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics.
+- The current land-use/land-cover product goes back to 1985 and stops in 2022.
+- We still need to confirm whether the land-use/land-cover product will be updated past 2022 or whether we need a replacement for later years.
+- The watershed-size comparison checks ERA5-Land against the old spatial-driver products across small, medium, and large watersheds.
 - Tiny watersheds use polygon reduction first, then a finer-scale polygon retry if needed.
-- Rows filled by the retry are flagged with `used_fine_scale_fallback`.
+- Rows filled by the finer-scale retry are flagged with `used_fine_scale_fallback`.
 - Run-group chunks are a fallback if all-sites-by-year exports are too large.
+
+## Repo Layout
+
+- `notebooks/`: Colab notebooks for GEE extraction tests and full runs.
+- `src/gee_spatial/`: Python extraction helpers called by the Colab notebooks.
+- `config/`: Earth Engine assets, product settings, and run settings.
+- `scripts/`, `post_export/`, `qa/`, `inventory/`: local R workflow pieces.
+- `docs/`: longer workflow notes.
+- `gee-code/`: draft Earth Engine Code Editor scripts; archive or remove later if not needed.

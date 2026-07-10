@@ -206,13 +206,13 @@ products:
     output_units: percent
     output_temporal_resolution:
       - annual
-    available_start_date: 2000-01-01
+    available_start_date: 1985-01-01
     available_end_date_checked: 2022-12-31
-    export_start_year: 2000
+    export_start_year: 1985
     export_end_year: 2022
     reducer: class_fraction
     output_name: land_cover_percent
-    notes: Selected LULC product is GLC_FCS30D annual land cover; use the 30 m annual classes through 2022 listed in the GEE Community Catalog
+    notes: Selected LULC product is GLC_FCS30D annual land cover; use the 30 m annual classes for 1985-2022 listed in the GEE Community Catalog
 
   elevation:
     status: selected
