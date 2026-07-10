@@ -40,13 +40,13 @@ if (is.na(script_path)) {
 }
 
 candidate_roots <- c(
-  if (!is.na(script_path)) normalizePath(file.path(dirname(script_path), "..", ".."), mustWork = TRUE),
+  if (!is.na(script_path)) normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE),
   getwd()
 )
 
 matching_roots <- candidate_roots[
   file.exists(file.path(candidate_roots, "config", "driver-products.yml")) &
-    file.exists(file.path(candidate_roots, "qa", "old_vs_gee", "run_old_vs_gee_annual_comparison_qa.R"))
+    file.exists(file.path(candidate_roots, "workflow", "run_old_vs_gee_annual_qa.R"))
 ]
 
 if (!length(matching_roots)) {
@@ -101,7 +101,7 @@ GEE_EXPORT_ORGANIZE_ARGS <- c(
 )
 
 message("Step 1: organizing completed GEE CSV exports in Google Drive.")
-source("post_export/organize_gee_exports_in_drive.R", local = TRUE)
+source("workflow/organize_drive_exports.R", local = TRUE)
 rm(GEE_EXPORT_ORGANIZE_ARGS)
 
 # Step 2: compare ERA5-Land outputs with old spatial-driver products -----
@@ -123,7 +123,7 @@ OLD_VS_GEE_QA_ARGS <- c(
 )
 
 message("Step 2: running watershed-size old-vs-GEE QA.")
-source("qa/old_vs_gee/run_old_vs_gee_annual_comparison_qa.R", local = TRUE)
+source("workflow/run_old_vs_gee_annual_qa.R", local = TRUE)
 rm(OLD_VS_GEE_QA_ARGS)
 
 message("Watershed-size old-vs-GEE QA finished.")

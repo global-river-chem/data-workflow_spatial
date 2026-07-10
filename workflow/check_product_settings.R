@@ -7,7 +7,7 @@ suppressPackageStartupMessages({
 }
 
 script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
-script_path <- if (length(script_arg)) sub("^--file=", "", script_arg[[1]]) else "scripts/check-product-config.R"
+script_path <- if (length(script_arg)) sub("^--file=", "", script_arg[[1]]) else "workflow/check_product_settings.R"
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE)
 product_config <- file.path(repo_root, "config", "driver-products.yml")
 

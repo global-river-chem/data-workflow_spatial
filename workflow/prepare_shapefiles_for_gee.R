@@ -284,7 +284,7 @@ if (!interactive()) {
 
   if (length(args) < 1) {
     stop(
-      "Usage: Rscript scripts/prepare-shapefiles-for-gee.R <input_dir> [output_dir]",
+      "Usage: Rscript workflow/prepare_shapefiles_for_gee.R <input_dir> [output_dir]",
       call. = FALSE
     )
   }

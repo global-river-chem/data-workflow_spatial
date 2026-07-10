@@ -15,7 +15,7 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## ERA5-Land Runs
 
-The primary full annual ERA5-Land notebook is `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`. It launches one export per year for all selected sites.
+The primary full annual ERA5-Land notebook is `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`. It launches one export per year for all selected sites.
 
 The config-driven grouped fallback is listed as `era5_land_annual_full_2000_2025` in `config/run-list.yml`. Use that route only if the all-sites-by-year tasks are too large or fail repeatedly.
 
@@ -42,13 +42,13 @@ Earth Engine's default average batch-task concurrency is 2, and the ready queue 
 Use this command to estimate any configured grouped run:
 
 ```bash
-Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full
+Rscript workflow/estimate_gee_run_size.R --run era5_land_monthly_full
 ```
 
 Once a pilot task finishes, add the observed average runtime:
 
 ```bash
-Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --minutes-per-task 10
+Rscript workflow/estimate_gee_run_size.R --run era5_land_monthly_full --minutes-per-task 10
 ```
 
 That converts the task count into a rough time estimate using two concurrent Earth Engine batch tasks.
@@ -66,24 +66,24 @@ Each row records the export name, run group, period, year/month, selected waters
 Use that file to estimate larger runs:
 
 ```bash
-Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing_era5_land_monthly_year_pilot_YYYYMMDDTHHMMSSZ.csv
+Rscript workflow/estimate_gee_run_size.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing_era5_land_monthly_year_pilot_YYYYMMDDTHHMMSSZ.csv
 ```
 
 You can filter the timing rows if a log has mixed runs:
 
 ```bash
-Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing.csv --timing-mode era5_land --timing-period monthly_by_year
+Rscript workflow/estimate_gee_run_size.R --run era5_land_monthly_full --timing-log timing-logs/gee_task_timing.csv --timing-mode era5_land --timing-period monthly_by_year
 ```
 
 For true per-variable timing, run a one-band pilot. If several ERA5-Land bands are exported together, the timing row describes that multi-band export, not the separate cost of each band.
 
-Weekly and daily outputs are not configured yet. Once we add them, the same timing pattern should work: run a small pilot, write the timing CSV, then feed that observed runtime into `scripts/plan-gee-runs.R`.
+Weekly and daily outputs are not configured yet. Once we add them, the same timing pattern should work: run a small pilot, write the timing CSV, then feed that observed runtime into `workflow/estimate_gee_run_size.R`.
 
 ## Recommended Order
 
-1. Run a one- or two-year smoke test from `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`.
+1. Run a one- or two-year smoke test from `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`.
 2. If the smoke test finishes cleanly, run the full annual ERA5-Land workflow for 2000-2025 from the same notebook.
-3. If all-sites-by-year tasks fail, switch to the grouped fallback in `notebooks/full_runs/run_configured_gee_spatial_extractions.ipynb`.
+3. If all-sites-by-year tasks fail, switch to the grouped fallback in `colab_notebooks/fallback_configured_gee_exports.ipynb`.
 4. Run the watershed-size comparison notebook and local QA when we need old-vs-GEE comparison plots/tables.
 5. Run `era5_land_monthly_year_pilot` for one group and one year before any monthly scale-up.
 6. Run the full ERA5 monthly record in `monthly_by_year` chunks only after the monthly pilot checks out.

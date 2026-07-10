@@ -11,7 +11,7 @@ finished_states <- c("COMPLETED", "FAILED", "CANCELLED")
 }
 
 script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
-script_path <- if (length(script_arg)) sub("^--file=", "", script_arg[[1]]) else "scripts/plan-gee-runs.R"
+script_path <- if (length(script_arg)) sub("^--file=", "", script_arg[[1]]) else "workflow/estimate_gee_run_size.R"
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE)
 
 parse_args <- function(args) {

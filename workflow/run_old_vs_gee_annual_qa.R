@@ -387,7 +387,7 @@ if (!skip_comparison) {
 
   do.call(Sys.setenv, as.list(env))
   tryCatch(
-    source("qa/old_vs_gee/plot_old_vs_gee_era5_comparison.R", local = TRUE),
+    source("workflow/compare_era5_to_old_products.R", local = TRUE),
     finally = restore_env()
   )
 }

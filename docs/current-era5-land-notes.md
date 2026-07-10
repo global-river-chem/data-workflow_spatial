@@ -8,7 +8,7 @@ This note holds the current run details that used to make the main README too lo
 - Geometry check: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/watershed-geometry-check_20260706.csv`
 - Active full annual run: `era5_land_annual_full_2000_2025`
 - Shared comparison-window run: `era5_land_annual_overlap_2001_2022`
-- Primary full annual notebook: `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`
+- Primary full annual notebook: `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`
 - Primary full annual task shape: one export per year for all selected sites, so 26 exports for 2000-2025.
 - Drainage area: `expected_area_km2` comes from the active wide spatial file, with `drainSqKm` from the site reference table and polygon geometry as fallbacks.
 - New exports include `drainage_area_source` so drainage-area provenance is visible row by row.
