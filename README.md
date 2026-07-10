@@ -5,6 +5,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 ## Workflow Notes And Data Decisions
 
 - This workflow is still being tested and organized.
+- For local R work, open `data-workflow_spatial.Rproj` in RStudio.
 - Colab notebooks are for Google Earth Engine extraction steps.
 - Local R scripts handle watershed inputs, post-export organization, QA, and inventory work.
 - Current annual ERA5-Land run being tested: 2000-2025.

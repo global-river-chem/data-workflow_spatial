@@ -1,12 +1,64 @@
 # Watershed-size ERA5-Land vs old spatial-driver QA.
-# Run this from the data-workflow_spatial repo root.
 
-if (!file.exists("qa/old_vs_gee/run_old_vs_gee_annual_comparison_qa.R")) {
+script_path_from_source <- function() {
+  frames <- sys.frames()
+  paths <- vapply(
+    frames,
+    function(frame) {
+      if (is.null(frame$ofile)) {
+        return(NA_character_)
+      }
+      frame$ofile
+    },
+    character(1)
+  )
+  paths <- paths[!is.na(paths) & nzchar(paths)]
+  if (!length(paths)) {
+    return(NA_character_)
+  }
+  normalizePath(paths[[length(paths)]], mustWork = TRUE)
+}
+
+script_path_from_rstudio <- function() {
+  if (!requireNamespace("rstudioapi", quietly = TRUE) || !rstudioapi::isAvailable()) {
+    return(NA_character_)
+  }
+
+  path <- tryCatch(
+    rstudioapi::getActiveDocumentContext()$path,
+    error = function(error) NA_character_
+  )
+  if (is.na(path) || !nzchar(path)) {
+    return(NA_character_)
+  }
+  normalizePath(path, mustWork = TRUE)
+}
+
+script_path <- script_path_from_source()
+if (is.na(script_path)) {
+  script_path <- script_path_from_rstudio()
+}
+
+candidate_roots <- c(
+  if (!is.na(script_path)) normalizePath(file.path(dirname(script_path), "..", ".."), mustWork = TRUE),
+  getwd()
+)
+
+matching_roots <- candidate_roots[
+  file.exists(file.path(candidate_roots, "config", "driver-products.yml")) &
+    file.exists(file.path(candidate_roots, "qa", "old_vs_gee", "run_old_vs_gee_annual_comparison_qa.R"))
+]
+
+if (!length(matching_roots)) {
   stop(
-    "Set the R working directory to the data-workflow_spatial repo root before running this script.",
+    "Could not find the data-workflow_spatial repo root from this script location.",
     call. = FALSE
   )
 }
+
+repo_root <- matching_roots[[1]]
+setwd(repo_root)
+message("Working directory: ", repo_root)
 
 # Settings ---------------------------------------------------------------
 
