@@ -54,9 +54,10 @@ if (is.na(combined_path) || !file.exists(combined_path)) {
 }
 
 today_tag <- format(Sys.Date(), "%Y%m%d")
+box_gee_input_folder <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files"
 outdir <- get_arg(
   "--outdir",
-  file.path("generated_outputs", paste0("gee_annual_comparison_sites_", today_tag))
+  file.path(box_gee_input_folder, paste0("watershed_size_comparison_sites_", today_tag))
 )
 per_size_class <- parse_int_arg("--per-size-class", 10)
 missing_area_count <- parse_int_arg("--missing-area-count", 5)

@@ -23,6 +23,8 @@ The full monthly run is listed as `era5_land_monthly_full`, but it uses `monthly
 
 The current run configs use the ERA5-Land products already listed in `config/driver-products.yml`. The export code now builds the ERA5 columns from the products listed for a run, so adding more ERA5-Land bands will widen each CSV instead of dropping the extra columns. It may make individual tasks slower, but it does not change the task counts below. The full catalog band list is here: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
 
+Annual ERA5-Land snow cover stays in the full analysis export as `snow_cover_fraction` using the original workflow metric: annual maximum snow-cover image summarized as a watershed mean. For old-vs-GEE snow QA only, the comparison notebooks also export `snow_cover_max_8day_watershed_fraction`, which is the annual maximum of 8-day mean watershed ERA5-Land snow-cover fraction and is closer to old MODIS `snow_YYYY_max_prop_area`.
+
 Expected task counts with the current 497-row watershed asset:
 
 | Run | Years | Run groups | Export files/tasks | Exported site-period rows |

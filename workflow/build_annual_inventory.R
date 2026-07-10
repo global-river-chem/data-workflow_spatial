@@ -47,10 +47,13 @@ slug <- get_arg("--slug", sub("_fine_scale$", "", run_label))
 start_year <- as.integer(get_arg("--start-year", "2000"))
 end_year <- as.integer(get_arg("--end-year", "2025"))
 input_dir <- get_arg("--input-dir", "")
+box_spatial_root <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions"
+box_gee_folder <- file.path(box_spatial_root, "spatial-data-files", "gee", "earth-engine-outputs")
+box_inventory_folder <- file.path(box_spatial_root, "master-datasets")
 output_dir <- get_arg(
   "--output-dir",
   file.path(
-    "generated_outputs",
+    box_inventory_folder,
     paste0(slug, "_era5_land_inventory_", format(Sys.Date(), "%Y%m%d"))
   )
 )
@@ -62,9 +65,8 @@ if (is.na(start_year) || is.na(end_year) || start_year > end_year) {
 }
 
 downloads_folder <- "/Users/sidneybush/Downloads"
-box_gee_folder <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-outputs"
-generated_output_dirs <- if (dir.exists("generated_outputs")) {
-  list.dirs("generated_outputs", recursive = TRUE, full.names = TRUE)
+box_gee_dirs <- if (dir.exists(box_gee_folder)) {
+  list.dirs(box_gee_folder, recursive = TRUE, full.names = TRUE)
 } else {
   character(0)
 }
@@ -77,7 +79,7 @@ era5_pattern <- paste0(
 
 candidate_dirs <- first_existing_dir(c(
   input_dir,
-  generated_output_dirs,
+  box_gee_dirs,
   if (dir.exists(downloads_folder)) list.dirs(downloads_folder, recursive = FALSE, full.names = TRUE) else character(0),
   downloads_folder,
   box_gee_folder

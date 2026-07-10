@@ -13,6 +13,8 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - Shared old-vs-GEE comparison window: 2001-2022.
 - The comparison window is driven by overlap among ERA5-Land, MODIS NPP/greenup, and the current land-cover product.
 - ERA5-Land variables currently included: precipitation, air temperature, actual evapotranspiration, potential evapotranspiration, snow cover fraction, and snow-water equivalent.
+- Use `snow_cover_fraction` for the new ERA5-Land analysis.
+- For old-vs-GEE snow QA only, comparison notebooks also export `snow_cover_max_8day_watershed_fraction`, which is closer to old MODIS `snow_YYYY_max_prop_area`.
 - MODIS NPP starts in 2001 and currently runs through 2024 in the workflow config.
 - MODIS greenup day starts in 2001 and currently runs through 2023 in the workflow config.
 - If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics.
@@ -34,6 +36,10 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - `workflow/build_annual_inventory.R`: local R script for building annual inventory tables from completed exports.
 - `docs/current-era5-land-notes.md`: current run notes.
 - `docs/gee-full-run-plan.md`: scaling and timing notes.
+
+## References To Revisit
+
+- Wang et al. 2022, Remote Sensing of Environment: MODIS and ERA5-Land land surface temperature comparison. Useful background for thinking through MODIS vs ERA5-Land product comparisons: https://doi.org/10.1016/j.rse.2022.113181
 
 ## Repo Layout
 
