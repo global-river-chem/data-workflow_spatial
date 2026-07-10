@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-
 # Local R entry point for the current watershed-size old-vs-GEE QA run.
 # Colab should only be used for the Earth Engine extraction notebooks.
 
