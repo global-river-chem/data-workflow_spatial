@@ -15,7 +15,9 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## ERA5-Land Runs
 
-The full ERA5-Land annual run is listed as `era5_land_annual_full_2000_2025`.
+The primary full annual ERA5-Land notebook is `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`. It launches one export per year for all selected sites.
+
+The config-driven grouped fallback is listed as `era5_land_annual_full_2000_2025` in `config/run-list.yml`. Use that route only if the all-sites-by-year tasks are too large or fail repeatedly.
 
 The full monthly run is listed as `era5_land_monthly_full`, but it uses `monthly_by_year` timing. That means one export file contains all 12 months for one year and one run group.
 
@@ -25,8 +27,9 @@ Expected task counts with the current 497-row watershed asset:
 
 | Run | Years | Run groups | Export files/tasks | Exported site-period rows |
 |---|---:|---:|---:|---:|
+| ERA5 annual, 2000-2025 full, all sites by year | 26 | none | 26 | 12,922 |
+| ERA5 annual, 2000-2025 full, grouped fallback | 26 | 49 | 1,274 | 12,922 |
 | ERA5 annual, 2001-2022 overlap | 22 | 49 | 1,078 | 10,934 |
-| ERA5 annual, 2000-2025 full | 26 | 49 | 1,274 | 12,922 |
 | ERA5 monthly, 2000-2025 full, bundled by year | 26 | 49 | 1,274 | 155,064 |
 | ERA5 monthly, 2000-2025 full, one task per month | 312 | 49 | 15,288 | 155,064 |
 
@@ -34,9 +37,9 @@ So the monthly run should use `monthly_by_year`. It creates the same number of r
 
 If we later add weekly or daily ERA5-Land outputs for the same 2000-2025 window, the row counts get much larger. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
 
-Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. Even for the 1,274-task 2000-2025 full run, use small chunks, check outputs, then keep moving through the run list. Quota details: https://developers.google.com/earth-engine/guides/usage
+Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. Start with the 26-task all-sites-by-year annual run. If those tasks are too large, switch to the 1,274-task grouped fallback and move through small chunks. Quota details: https://developers.google.com/earth-engine/guides/usage
 
-Use this command to estimate any configured run:
+Use this command to estimate any configured grouped run:
 
 ```bash
 Rscript scripts/plan-gee-runs.R --run era5_land_monthly_full
@@ -79,11 +82,12 @@ Weekly and daily outputs are not configured yet. Once we add them, the same timi
 ## Recommended Order
 
 1. Run a one- or two-year smoke test from `notebooks/full_runs/run_all_sites_annual_era5_land_2000_2025.ipynb`.
-2. If the smoke test finishes cleanly, run the full annual ERA5-Land workflow for 2000-2025.
-3. Run the watershed-size comparison notebook and local QA when we need old-vs-GEE comparison plots/tables.
-4. Run `era5_land_monthly_year_pilot` for one group and one year before any monthly scale-up.
-5. Run the full ERA5 monthly record in `monthly_by_year` chunks only after the monthly pilot checks out.
-6. Then add MODIS annual products, land cover, elevation, soils, lithology, permafrost, and the selected human-impact layers.
+2. If the smoke test finishes cleanly, run the full annual ERA5-Land workflow for 2000-2025 from the same notebook.
+3. If all-sites-by-year tasks fail, switch to the grouped fallback in `notebooks/full_runs/run_configured_gee_spatial_extractions.ipynb`.
+4. Run the watershed-size comparison notebook and local QA when we need old-vs-GEE comparison plots/tables.
+5. Run `era5_land_monthly_year_pilot` for one group and one year before any monthly scale-up.
+6. Run the full ERA5 monthly record in `monthly_by_year` chunks only after the monthly pilot checks out.
+7. Then add MODIS annual products, land cover, elevation, soils, lithology, permafrost, and the selected human-impact layers.
 
 ## Cloud Storage
 

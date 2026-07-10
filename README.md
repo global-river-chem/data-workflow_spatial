@@ -29,10 +29,8 @@ This repo keeps the reusable GEE extraction code, run configuration, and Colab r
 1. Build the watershed input files with `scripts/build-gee-watershed-upload.R`.
 2. Upload watershed assets to Earth Engine.
 3. Set the watershed asset and export folder in `config/gee-assets.yml`.
-4. Pick the active run in `config/run-list.yml`.
-5. Check task counts before launching a run with `Rscript scripts/plan-gee-runs.R`.
-6. Run the Colab notebook.
-7. Check exported CSVs before launching the next batch.
+4. Run the needed Colab extraction notebook.
+5. Use local R for Drive organization, QA, and inventory building.
 
 Post-export R examples:
 
@@ -44,6 +42,8 @@ Rscript inventory/build_all_sites_annual_inventory.R
 ## Current ERA5-Land Direction
 
 For the current annual ERA5-Land workflow, start at 2000 unless a specific comparison run intentionally uses the 2001-2022 shared product window. Keep long-record or monthly ideas in planning docs until pilots have been checked.
+
+The primary full annual Colab launches one export per year for all selected sites. With the current 497-site asset, the 2000-2025 run is 26 Earth Engine table exports. The config-driven grouped runner remains available as a fallback if the all-sites-by-year tasks are too large.
 
 Current selected annual ERA5-Land outputs:
 
@@ -59,7 +59,8 @@ Tiny watersheds are handled with polygon reduction first, then a finer-scale pol
 ## Run Pattern
 
 - Use one Colab runner.
-- Run one product group, one time slice, and one site group at a time.
+- For annual ERA5-Land, try one year per export across all selected sites.
+- Use run-group chunks only if the all-sites-by-year exports fail or become too slow.
 - Launch small task chunks first.
 - Use timing logs to estimate the full run.
 - Check outputs before scaling up.

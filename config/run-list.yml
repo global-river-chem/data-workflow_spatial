@@ -37,7 +37,7 @@ runs:
     end_year: 2025
     run_groups: all
     launch_export: true
-    notes: Current full annual ERA5-Land pull for all watersheds
+    notes: Config-driven grouped fallback for the current full annual ERA5-Land pull; primary Colab runs one all-site export per year
 
   era5_land_annual_overlap_2001_2022:
     mode: era5_land
