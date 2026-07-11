@@ -275,6 +275,30 @@ def build_daily_scaled_collection(
     )
 
 
+def build_max_8day_mean_image(
+    collection,
+    source_output_name: str,
+    comparison_output_name: str,
+    year: int,
+):
+    import ee
+
+    year_start = ee.Date.fromYMD(year, 1, 1)
+    window_offsets = ee.List.sequence(0, 360, 8)
+
+    def mean_window(offset):
+        offset = ee.Number(offset)
+        window_start = year_start.advance(offset, "day")
+        window_end = window_start.advance(8, "day")
+        return (
+            collection.filterDate(window_start, window_end)
+            .mean()
+            .select([source_output_name], [comparison_output_name])
+        )
+
+    return ee.ImageCollection(window_offsets.map(mean_window)).max().rename(comparison_output_name)
+
+
 def summarize_image_by_watersheds(
     image,
     watersheds,
@@ -366,7 +390,15 @@ def fill_missing_values_at_fine_scale(
             )
             for output_name in output_names
         }
-        updates["used_fine_scale_fallback"] = ee.List(fallback_checks).contains(True)
+        existing_fallback = ee.Algorithms.If(
+            ee.Algorithms.IsEqual(feature.get("used_fine_scale_fallback"), None),
+            False,
+            feature.get("used_fine_scale_fallback"),
+        )
+        used_fine_scale_fallback = ee.List(
+            [existing_fallback, ee.List(fallback_checks).contains(True)]
+        ).contains(True)
+        updates["used_fine_scale_fallback"] = used_fine_scale_fallback
 
         return feature.set(updates)
 
@@ -742,12 +774,22 @@ def extract_era5_land_products(
                 month=month,
                 extra_days_after_year=8,
             )
-            summary = add_max_8day_watershed_mean(
-                summary=summary,
+            snow_8day_image = build_max_8day_mean_image(
                 collection=snow_collection,
                 source_output_name=snow_product.get("output_name"),
                 comparison_output_name=comparison_output_name,
                 year=year,
+            )
+            summary = summarize_image_by_watersheds(
+                image=snow_8day_image,
+                watersheds=summary,
+                reducer=ee_reducer(snow_product.get("reducer", "mean")),
+                scale=snow_product.get("selected_spatial_resolution_m"),
+            )
+            summary = fill_missing_values_at_fine_scale(
+                summary=summary,
+                image=snow_8day_image,
+                output_names=[comparison_output_name],
                 reducer=ee_reducer(snow_product.get("reducer", "mean")),
                 scale=snow_product.get("selected_spatial_resolution_m"),
             )
