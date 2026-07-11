@@ -96,6 +96,7 @@ DEFAULT_ERA5_PRODUCTS = [
     "snow_cover",
     "snow_water_equiv",
 ]
+MISSING_REDUCE_REGION_VALUE = -1e30
 TINY_WATERSHED_AREA_KM2 = 10
 
 
@@ -186,6 +187,17 @@ def apply_scale_offset(image, product: Dict[str, Any]):
     output_name = product.get("output_name", product.get("band", "value"))
 
     return image.multiply(scale_factor).add(offset).rename(output_name)
+
+
+def reduce_region_value_or_null(values, key: str):
+    import ee
+
+    value = ee.Dictionary(values).get(key, MISSING_REDUCE_REGION_VALUE)
+    return ee.Algorithms.If(
+        ee.Algorithms.IsEqual(value, MISSING_REDUCE_REGION_VALUE),
+        None,
+        value,
+    )
 
 
 def build_continuous_image(
@@ -328,12 +340,16 @@ def fill_missing_values_at_fine_scale(
             kwargs["scale"] = retry_scale
 
         fine_scale_values = image.reduceRegion(**kwargs)
+        fine_scale_lookup = {
+            output_name: reduce_region_value_or_null(fine_scale_values, output_name)
+            for output_name in output_names
+        }
 
         fallback_checks = [
             ee.Algorithms.If(
                 ee.Algorithms.IsEqual(feature.get(output_name), None),
                 ee.Algorithms.If(
-                    ee.Algorithms.IsEqual(fine_scale_values.get(output_name), None),
+                    ee.Algorithms.IsEqual(fine_scale_lookup[output_name], None),
                     False,
                     True,
                 ),
@@ -345,7 +361,7 @@ def fill_missing_values_at_fine_scale(
         updates = {
             output_name: ee.Algorithms.If(
                 ee.Algorithms.IsEqual(feature.get(output_name), None),
-                fine_scale_values.get(output_name),
+                fine_scale_lookup[output_name],
                 feature.get(output_name),
             )
             for output_name in output_names
@@ -392,7 +408,10 @@ def add_max_8day_watershed_mean(
             if scale is not None:
                 kwargs["scale"] = scale
 
-            value = window_image.reduceRegion(**kwargs).get(source_output_name, None)
+            value = reduce_region_value_or_null(
+                window_image.reduceRegion(**kwargs),
+                source_output_name,
+            )
 
             retry_kwargs = {
                 "reducer": export_reducer,
@@ -404,7 +423,10 @@ def add_max_8day_watershed_mean(
             if retry_scale is not None:
                 retry_kwargs["scale"] = retry_scale
 
-            retry_value = window_image.reduceRegion(**retry_kwargs).get(source_output_name, None)
+            retry_value = reduce_region_value_or_null(
+                window_image.reduceRegion(**retry_kwargs),
+                source_output_name,
+            )
             used_fine_scale = ee.Algorithms.If(
                 ee.Algorithms.IsEqual(value, None),
                 ee.Algorithms.If(
