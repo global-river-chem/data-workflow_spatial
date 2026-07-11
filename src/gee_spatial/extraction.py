@@ -186,7 +186,12 @@ def apply_scale_offset(image, product: Dict[str, Any]):
     offset = product.get("offset", 0)
     output_name = product.get("output_name", product.get("band", "value"))
 
-    return image.multiply(scale_factor).add(offset).rename(output_name)
+    return (
+        image.multiply(scale_factor)
+        .add(offset)
+        .rename(output_name)
+        .copyProperties(image, image.propertyNames())
+    )
 
 
 def reduce_region_value_or_null(values, key: str):
