@@ -392,7 +392,7 @@ def add_max_8day_watershed_mean(
             if scale is not None:
                 kwargs["scale"] = scale
 
-            value = window_image.reduceRegion(**kwargs).get(source_output_name)
+            value = window_image.reduceRegion(**kwargs).get(source_output_name, None)
 
             retry_kwargs = {
                 "reducer": export_reducer,
@@ -404,7 +404,7 @@ def add_max_8day_watershed_mean(
             if retry_scale is not None:
                 retry_kwargs["scale"] = retry_scale
 
-            retry_value = window_image.reduceRegion(**retry_kwargs).get(source_output_name)
+            retry_value = window_image.reduceRegion(**retry_kwargs).get(source_output_name, None)
             used_fine_scale = ee.Algorithms.If(
                 ee.Algorithms.IsEqual(value, None),
                 ee.Algorithms.If(

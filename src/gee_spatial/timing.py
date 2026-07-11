@@ -10,6 +10,8 @@ from typing import Any
 
 
 DONE_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
+SUCCESS_STATES = {"COMPLETED"}
+FAILED_STATES = {"FAILED", "CANCELLED"}
 
 TIMING_COLUMNS = [
     "run_name",
@@ -190,3 +192,17 @@ def print_timing_summary(rows: list[dict[str, Any]]) -> None:
                 }
             )
         )
+
+    failed_rows = [row for row in rows if row.get("state") in FAILED_STATES]
+    if failed_rows:
+        print("\nFailed or cancelled tasks")
+        for row in failed_rows:
+            print(
+                json.dumps(
+                    {
+                        "export_name": row.get("export_name", ""),
+                        "state": row.get("state", ""),
+                        "error_message": row.get("error_message", ""),
+                    }
+                )
+            )

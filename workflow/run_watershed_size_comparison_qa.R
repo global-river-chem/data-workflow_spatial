@@ -20,9 +20,10 @@ plot_subject <- "Watershed-size comparison sites"
 start_year <- 2001
 end_year <- 2023
 
-drive_account <- "bushsi@oregonstate.edu"
-drive_export_folder_id <- "1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX"
-drive_output_folder_id <- "1hYedMgoR1907nwtOjjjqYFzjG28gk3-T"
+drive_account <- Sys.getenv("SILICA_DRIVE_ACCOUNT", unset = "bushsi@oregonstate.edu")
+drive_export_folder_id <- Sys.getenv("SILICA_DRIVE_EXPORT_ROOT_ID", unset = "1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX")
+drive_output_folder_id <- Sys.getenv("SILICA_DRIVE_QA_OUTPUT_ROOT_ID", unset = "1hYedMgoR1907nwtOjjjqYFzjG28gk3-T")
+direct_drive_export_folder_id <- Sys.getenv("SILICA_DIRECT_DRIVE_EXPORT_FOLDER_ID", unset = "")
 
 drive_export_subfolder <- "watershed_size_gee_exports_snow8day_2001_2023"
 drive_qa_subfolder <- "watershed_size_qa"
@@ -314,6 +315,14 @@ find_previous_drive_export_folders <- function(export_root) {
 
 organize_drive_exports <- function() {
   authenticate_drive()
+
+  if (nzchar(direct_drive_export_folder_id)) {
+    run_folder <- googledrive::drive_get(googledrive::as_id(direct_drive_export_folder_id))
+    message("Using direct GEE Drive export folder ID: ", direct_drive_export_folder_id)
+    message("Run folder: ", run_folder$name[[1]])
+    message("Run folder URL: https://drive.google.com/drive/folders/", run_folder$id[[1]])
+    return(run_folder)
+  }
 
   export_root <- googledrive::as_id(drive_export_folder_id)
   run_folder <- drive_child_folder(drive_export_subfolder, export_root)
