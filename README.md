@@ -7,6 +7,8 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - This workflow is still being tested and organized.
 - Use Colab for Google Earth Engine extraction steps.
 - Use RStudio for local R workflow scripts.
+- Colab notebooks launch Earth Engine exports and then stop after one status snapshot by default.
+- Set `WAIT_FOR_TASKS = TRUE` in a Colab notebook only if you want Colab to keep polling until all launched tasks finish.
 - Current annual ERA5-Land run being tested: 2000-2025.
 - Current annual ERA5-Land shape: one export per year for all selected sites, or 26 yearly exports.
 - ERA5-Land can go back to 1950, but the current default start year is 2000.
