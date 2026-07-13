@@ -14,7 +14,9 @@ env_bool <- function(name, default) {
 
 # Settings ---------------------------------------------------------------
 
-run_label <- "comparison_sites_fine_scale_snow8day"
+base_run_label <- "comparison_sites_fine_scale"
+snow_run_label <- "comparison_sites_snow8day_only"
+run_label <- base_run_label
 comparison_slug <- "watershed_size_comparison"
 plot_subject <- "Watershed-size comparison sites"
 start_year <- 2001
@@ -25,15 +27,16 @@ drive_export_folder_id <- Sys.getenv("SILICA_DRIVE_EXPORT_ROOT_ID", unset = "1Y4
 drive_output_folder_id <- Sys.getenv("SILICA_DRIVE_QA_OUTPUT_ROOT_ID", unset = "1hYedMgoR1907nwtOjjjqYFzjG28gk3-T")
 direct_drive_export_folder_id <- Sys.getenv("SILICA_DIRECT_DRIVE_EXPORT_FOLDER_ID", unset = "")
 
-drive_export_subfolder <- "watershed_size_gee_exports_snow8day_2001_2023"
+base_drive_export_subfolder <- "gee_exports_era5_land_watershed_size_comparison_sites_2001_2023"
+snow_drive_export_subfolder <- "watershed_size_snow8day_only_2001_2023"
 drive_qa_subfolder <- "watershed_size_qa"
 drive_plot_folder <- "plots"
 drive_csv_folder <- "tables"
 
-previous_drive_export_subfolders <- c(
+base_previous_drive_export_subfolders <- c(
   "gee_exports_era5_land_watershed_size_comparison_sites_2001_2023"
 )
-previous_drive_export_folder_ids <- c(
+base_previous_drive_export_folder_ids <- c(
   "19eYZLEfCtNAxJvQv1-9y53XU6emaUh3F"
 )
 
@@ -121,24 +124,48 @@ box_gee_output_root <- file.path(
 )
 box_qa_root <- file.path(box_spatial_root, "qaqc", "gee")
 expected_years <- seq.int(start_year, end_year)
-expected_csv_names <- paste0(
+base_expected_csv_names <- paste0(
   "era5_land_",
   expected_years,
   "_",
-  run_label,
+  base_run_label,
+  "_watershed_extract.csv"
+)
+snow_expected_csv_names <- paste0(
+  "era5_land_",
+  expected_years,
+  "_",
+  snow_run_label,
   "_watershed_extract.csv"
 )
 snow_comparison_column <- "snow_cover_max_8day_watershed_fraction"
-local_export_folder <- file.path(
+base_local_export_folder <- Sys.getenv(
+  "SILICA_BASE_ERA5_EXPORT_FOLDER",
+  unset = file.path(
+    box_gee_output_root,
+    "gee_exports_watershed_size_20260710",
+    paste0("era5_", start_year, "_", end_year)
+  )
+)
+base_download_folder <- file.path(
   box_gee_output_root,
-  paste0("gee_exports_watershed_size_snow8day_", today_tag),
+  paste0("gee_exports_watershed_size_base_", today_tag),
   paste0("era5_", start_year, "_", end_year)
+)
+snow_local_export_folder <- Sys.getenv(
+  "SILICA_SNOW8DAY_EXPORT_FOLDER",
+  unset = file.path(
+    box_gee_output_root,
+    paste0("gee_exports_watershed_size_snow8day_only_", today_tag),
+    paste0("era5_", start_year, "_", end_year)
+  )
 )
 output_folder <- file.path(
   box_qa_root,
   paste0("watershed_size_qa_", today_tag)
 )
-dir.create(local_export_folder, recursive = TRUE, showWarnings = FALSE)
+dir.create(base_download_folder, recursive = TRUE, showWarnings = FALSE)
+dir.create(snow_local_export_folder, recursive = TRUE, showWarnings = FALSE)
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 
 # General helpers --------------------------------------------------------
@@ -295,9 +322,13 @@ find_drive_child_folder <- function(folder_name, parent) {
   folder_matches[1, ]
 }
 
-find_previous_drive_export_folders <- function(export_root) {
+find_previous_drive_export_folders <- function(
+  export_root,
+  previous_subfolders = character(),
+  previous_folder_ids = character()
+) {
   named_folders <- lapply(
-    previous_drive_export_subfolders,
+    previous_subfolders,
     find_drive_child_folder,
     parent = export_root
   )
@@ -308,12 +339,17 @@ find_previous_drive_export_folders <- function(export_root) {
   )
 
   unique(c(
-    previous_drive_export_folder_ids[nzchar(previous_drive_export_folder_ids)],
+    previous_folder_ids[nzchar(previous_folder_ids)],
     named_folder_ids
   ))
 }
 
-organize_drive_exports <- function() {
+organize_drive_exports <- function(
+  drive_export_subfolder,
+  expected_csv_names,
+  previous_subfolders = character(),
+  previous_folder_ids = character()
+) {
   authenticate_drive()
 
   if (nzchar(direct_drive_export_folder_id)) {
@@ -328,7 +364,11 @@ organize_drive_exports <- function() {
   run_folder <- drive_child_folder(drive_export_subfolder, export_root)
   source_folder_ids <- unique(c(
     run_folder$id[[1]],
-    find_previous_drive_export_folders(export_root),
+    find_previous_drive_export_folders(
+      export_root,
+      previous_subfolders = previous_subfolders,
+      previous_folder_ids = previous_folder_ids
+    ),
     drive_export_folder_id
   ))
 
@@ -364,7 +404,7 @@ organize_drive_exports <- function() {
   invisible(run_folder)
 }
 
-download_drive_exports <- function(run_folder_id) {
+download_drive_exports <- function(run_folder_id, expected_csv_names, local_export_folder) {
   authenticate_drive()
 
   downloaded <- character(0)
@@ -409,22 +449,37 @@ upload_output_to_drive <- function(path, drive_folder) {
 # Step 1: organize and download GEE exports -----------------------------
 
 if (download_from_drive || upload_to_drive) {
-  message("Step 1: organizing completed GEE CSV exports in Google Drive.")
-  run_folder <- organize_drive_exports()
+  message("Step 1a: organizing completed base ERA5-Land CSV exports in Google Drive.")
+  base_run_folder <- organize_drive_exports(
+    drive_export_subfolder = base_drive_export_subfolder,
+    expected_csv_names = base_expected_csv_names,
+    previous_subfolders = base_previous_drive_export_subfolders,
+    previous_folder_ids = base_previous_drive_export_folder_ids
+  )
+
+  message("Step 1b: organizing completed snow-only GEE CSV exports in Google Drive.")
+  snow_run_folder <- organize_drive_exports(
+    drive_export_subfolder = snow_drive_export_subfolder,
+    expected_csv_names = snow_expected_csv_names
+  )
 } else {
   message("Step 1: using local GEE CSV exports.")
-  run_folder <- NULL
+  base_run_folder <- NULL
+  snow_run_folder <- NULL
 }
 
 if (download_from_drive) {
-  download_drive_exports(run_folder$id[[1]])
+  download_drive_exports(
+    run_folder_id = base_run_folder$id[[1]],
+    expected_csv_names = base_expected_csv_names,
+    local_export_folder = base_download_folder
+  )
+  download_drive_exports(
+    run_folder_id = snow_run_folder$id[[1]],
+    expected_csv_names = snow_expected_csv_names,
+    local_export_folder = snow_local_export_folder
+  )
 }
-
-era5_pattern <- paste0(
-  "^era5_land_[0-9]{4}_",
-  regex_escape(run_label),
-  "_watershed_extract\\.csv$"
-)
 
 box_output_dirs <- if (dir.exists(box_gee_output_root)) {
   list.dirs(box_gee_output_root, recursive = TRUE, full.names = TRUE)
@@ -432,83 +487,149 @@ box_output_dirs <- if (dir.exists(box_gee_output_root)) {
   character(0)
 }
 
-candidate_dirs <- first_existing_dir(c(
-  local_export_folder,
-  box_output_dirs,
-  "/Users/sidneybush/Downloads",
-  box_gee_output_root
-))
+find_export_files <- function(label, preferred_local_folders, expected_years, export_label) {
+  era5_pattern <- paste0(
+    "^era5_land_[0-9]{4}_",
+    regex_escape(label),
+    "_watershed_extract\\.csv$"
+  )
 
-files_by_dir <- lapply(candidate_dirs, function(folder) {
-  list.files(folder, pattern = era5_pattern, full.names = TRUE)
-})
+  candidate_dirs <- first_existing_dir(c(
+    preferred_local_folders,
+    box_output_dirs,
+    "/Users/sidneybush/Downloads",
+    box_gee_output_root
+  ))
 
-folder_summary <- tibble(
-  folder = candidate_dirs,
-  n_files = lengths(files_by_dir),
-  latest_file_time = as.POSIXct(vapply(
-    files_by_dir,
-    function(files) {
-      if (!length(files)) {
-        return(NA_real_)
-      }
-      max(file.info(files)$mtime)
-    },
-    numeric(1)
-  ), origin = "1970-01-01")
-) %>%
-  filter(n_files > 0) %>%
-  arrange(desc(n_files), desc(latest_file_time))
+  files_by_dir <- lapply(candidate_dirs, function(folder) {
+    list.files(folder, pattern = era5_pattern, full.names = TRUE)
+  })
 
-if (!nrow(folder_summary)) {
-  stop("Could not find the expected local ERA5-Land export CSVs.", call. = FALSE)
+  folder_summary <- tibble(
+    folder = candidate_dirs,
+    n_files = lengths(files_by_dir),
+    latest_file_time = as.POSIXct(vapply(
+      files_by_dir,
+      function(files) {
+        if (!length(files)) {
+          return(NA_real_)
+        }
+        max(file.info(files)$mtime)
+      },
+      numeric(1)
+    ), origin = "1970-01-01")
+  ) %>%
+    filter(n_files > 0) %>%
+    arrange(desc(n_files), desc(latest_file_time))
+
+  if (!nrow(folder_summary)) {
+    stop("Could not find the expected local ", export_label, " export CSVs.", call. = FALSE)
+  }
+
+  export_folder <- folder_summary$folder[[1]]
+  export_files <- sort(list.files(export_folder, pattern = era5_pattern, full.names = TRUE))
+  export_years <- as.integer(sub("^era5_land_([0-9]{4})_.*$", "\\1", basename(export_files)))
+  missing_years <- setdiff(expected_years, export_years)
+
+  message("Using ", export_label, " export folder: ", normalizePath(export_folder))
+  message("Found ", export_label, " export files: ", length(export_files))
+
+  if (length(missing_years)) {
+    stop(
+      "Missing expected ",
+      export_label,
+      " export years: ",
+      paste(missing_years, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  list(folder = export_folder, files = export_files)
 }
 
-export_folder <- folder_summary$folder[[1]]
-export_files <- sort(list.files(export_folder, pattern = era5_pattern, full.names = TRUE))
-export_years <- as.integer(sub("^era5_land_([0-9]{4})_.*$", "\\1", basename(export_files)))
-missing_years <- setdiff(expected_years, export_years)
+base_export <- find_export_files(
+  label = base_run_label,
+  preferred_local_folders = c(base_download_folder, base_local_export_folder),
+  expected_years = expected_years,
+  export_label = "base ERA5-Land"
+)
 
-message("Using ERA5-Land export folder: ", normalizePath(export_folder))
-message("Found ERA5-Land export files: ", length(export_files))
-
-if (length(missing_years)) {
-  stop("Missing expected export years: ", paste(missing_years, collapse = ", "), call. = FALSE)
-}
+snow_export <- find_export_files(
+  label = snow_run_label,
+  preferred_local_folders = snow_local_export_folder,
+  expected_years = expected_years,
+  export_label = "snow-only ERA5-Land"
+)
 
 # Step 2: compare ERA5-Land with old spatial-driver products -------------
 
 message("Step 2: running watershed-size old-vs-GEE QA.")
 
-era5_raw <- export_files %>%
+era5_raw <- base_export$files %>%
   lapply(read_csv, show_col_types = FALSE) %>%
-  bind_rows()
+  bind_rows() %>%
+  mutate(
+    lter_key = toupper(lter),
+    shapefile_key = toupper(shapefile_name)
+  )
+
+snow_raw <- snow_export$files %>%
+  lapply(read_csv, show_col_types = FALSE) %>%
+  bind_rows() %>%
+  mutate(
+    lter_key = toupper(lter),
+    shapefile_key = toupper(shapefile_name)
+  )
 
 if (!"used_centroid_fallback" %in% names(era5_raw)) {
   era5_raw$used_centroid_fallback <- NA
 }
+if (!"used_centroid_fallback" %in% names(snow_raw)) {
+  snow_raw$used_centroid_fallback <- NA
+}
 
 missing_era5_columns <- setdiff(
-  c("used_fine_scale_fallback", snow_comparison_column),
+  c("used_fine_scale_fallback", "precip_mm", "temp_degC", "evapotrans_mm"),
   names(era5_raw)
+)
+missing_snow_columns <- setdiff(
+  snow_comparison_column,
+  names(snow_raw)
 )
 
 if (length(missing_era5_columns)) {
   stop(
-    "The ERA5-Land files are missing required columns: ",
+    "The base ERA5-Land files are missing required columns: ",
     paste(missing_era5_columns, collapse = ", "),
-    ". This usually means the QA script found stale exports instead of the corrected snow8day Colab exports. ",
-    "Re-run the watershed-size comparison Colab and confirm the Export columns line includes ",
+    ".",
+    call. = FALSE
+  )
+}
+if (length(missing_snow_columns)) {
+  stop(
+    "The snow-only ERA5-Land files are missing required columns: ",
+    paste(missing_snow_columns, collapse = ", "),
+    ". Re-run the snow-only watershed-size Colab and confirm the Export columns line includes ",
     snow_comparison_column,
     ".",
     call. = FALSE
   )
 }
 
+snow_lookup <- snow_raw %>%
+  select(
+    lter_key,
+    shapefile_key,
+    year,
+    all_of(snow_comparison_column),
+    used_centroid_fallback_snow8day = used_centroid_fallback
+  )
+
+era5_raw <- era5_raw %>%
+  left_join(snow_lookup, by = c("lter_key", "shapefile_key", "year"))
+
 era5 <- era5_raw %>%
   mutate(
-    lter_key = toupper(lter),
-    shapefile_key = toupper(shapefile_name),
     stream_name = toupper(stream_name),
     used_centroid_fallback = if_else(
       is.na(used_centroid_fallback),
@@ -520,9 +641,18 @@ era5 <- era5_raw %>%
       NA_character_,
       as.character(used_fine_scale_fallback)
     ),
+    used_centroid_fallback_snow8day = if_else(
+      is.na(used_centroid_fallback_snow8day),
+      NA_character_,
+      as.character(used_centroid_fallback_snow8day)
+    ),
     era5_fallback_method = case_when(
       is_true_flag(used_fine_scale_fallback) ~ "Fine-scale polygon retry",
       is_true_flag(used_centroid_fallback) ~ "Centroid fill",
+      TRUE ~ "Native-scale polygon mean"
+    ),
+    snow_fallback_method = case_when(
+      is_true_flag(used_centroid_fallback_snow8day) ~ "Centroid fill",
       TRUE ~ "Native-scale polygon mean"
     )
   )
@@ -603,9 +733,9 @@ snow_points <- if (snow_comparison_column %in% names(era5)) {
       stream_name,
       year,
       tiny_watershed,
-      used_fine_scale_fallback,
-      used_centroid_fallback,
-      era5_fallback_method,
+      used_fine_scale_fallback = NA_character_,
+      used_centroid_fallback = used_centroid_fallback_snow8day,
+      era5_fallback_method = snow_fallback_method,
       polygon_area_km2,
       era5_value = as_fraction(.data[[snow_comparison_column]]),
       reference_value = as_fraction(reference_value)
@@ -1088,7 +1218,8 @@ write_csv(fallback_by_site, fallback_by_site_file, na = "")
 write_csv(shared_value_groups, shared_value_groups_file, na = "")
 
 message("Wrote comparison outputs to: ", normalizePath(output_folder))
-message("ERA5-Land run label: ", run_label)
+message("Base ERA5-Land run label: ", base_run_label)
+message("Snow-only ERA5-Land run label: ", snow_run_label)
 message("ERA5-Land years used: ", paste(sort(unique(era5$year)), collapse = ", "))
 if (nrow(snow_points)) {
   message("Snow-cover QA used comparison-only ERA5-Land column: ", snow_comparison_column)

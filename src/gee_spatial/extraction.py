@@ -410,6 +410,71 @@ def fill_missing_values_at_fine_scale(
     return summary.map(fill_feature)
 
 
+def fill_missing_values_at_centroid(
+    summary,
+    image,
+    output_names: list[str],
+    reducer=None,
+    scale: Optional[float] = None,
+    tile_scale: int = 4,
+):
+    import ee
+
+    export_reducer = reducer or ee.Reducer.mean()
+
+    def fill_feature(feature):
+        kwargs = {
+            "reducer": export_reducer,
+            "geometry": feature.geometry().centroid(1),
+            "tileScale": tile_scale,
+            "maxPixels": 100000000,
+        }
+
+        if scale is not None:
+            kwargs["scale"] = scale
+
+        centroid_values = image.reduceRegion(**kwargs)
+        centroid_lookup = {
+            output_name: reduce_region_value_or_null(centroid_values, output_name)
+            for output_name in output_names
+        }
+
+        fallback_checks = [
+            ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get(output_name), None),
+                ee.Algorithms.If(
+                    ee.Algorithms.IsEqual(centroid_lookup[output_name], None),
+                    False,
+                    True,
+                ),
+                False,
+            )
+            for output_name in output_names
+        ]
+
+        updates = {
+            output_name: ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get(output_name), None),
+                centroid_lookup[output_name],
+                feature.get(output_name),
+            )
+            for output_name in output_names
+        }
+        existing_fallback = ee.Algorithms.If(
+            ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+            False,
+            feature.get("used_centroid_fallback"),
+        )
+        used_centroid_fallback = ee.List(
+            [existing_fallback, ee.List(fallback_checks).contains(True)]
+        ).contains(True)
+        updates["used_centroid_fallback"] = used_centroid_fallback
+
+        return feature.set(updates)
+
+    return summary.map(fill_feature)
+
+
 def add_max_8day_watershed_mean(
     summary,
     collection,
@@ -643,6 +708,19 @@ def era5_export_columns(
     ]
 
 
+def snow8day_comparison_export_columns(products_config: Dict[str, Any]) -> list[str]:
+    snow_product = get_product(products_config, "snow_cover")
+    comparison_output_name = snow_product.get("comparison_output_name")
+    if not comparison_output_name:
+        raise ValueError("snow_cover comparison_output_name is not configured")
+
+    return [
+        *ERA5_METADATA_COLUMNS,
+        comparison_output_name,
+        "used_centroid_fallback",
+    ]
+
+
 def build_multi_product_image(
     product_names: list[str],
     products_config: Dict[str, Any],
@@ -702,6 +780,32 @@ def clean_multi_product_feature(
     return ee.Feature(None, properties)
 
 
+def clean_snow8day_comparison_feature(feature, comparison_output_name: str, year: int):
+    import ee
+
+    properties = {
+        output_name: get_first_property(feature, source_names)
+        for output_name, source_names in PROPERTY_NAMES.items()
+    }
+    properties["polygon_area_km2"] = polygon_area_km2_value(feature)
+    properties["tiny_watershed"] = tiny_watershed_value(feature)
+    properties.update(
+        {
+            "period": "annual",
+            "year": year,
+            "month": "",
+            comparison_output_name: feature.get(comparison_output_name),
+            "used_centroid_fallback": ee.Algorithms.If(
+                ee.Algorithms.IsEqual(feature.get("used_centroid_fallback"), None),
+                False,
+                feature.get("used_centroid_fallback"),
+            ),
+        }
+    )
+
+    return ee.Feature(None, properties)
+
+
 def extract_continuous_product(
     product_name: str,
     products_config: Dict[str, Any],
@@ -728,6 +832,54 @@ def extract_continuous_product(
     )
 
     return summary.map(lambda feature: clean_continuous_feature(feature, product_name, product, year, month))
+
+
+def extract_snow8day_comparison_product(
+    products_config: Dict[str, Any],
+    watersheds,
+    year: int,
+):
+    snow_product = get_product(products_config, "snow_cover")
+    source_output_name = snow_product.get("output_name")
+    comparison_output_name = snow_product.get("comparison_output_name")
+    if not comparison_output_name:
+        raise ValueError("snow_cover comparison_output_name is not configured")
+
+    snow_collection = build_daily_scaled_collection(
+        snow_product,
+        year=year,
+        month=None,
+        extra_days_after_year=8,
+    )
+    snow_8day_image = build_max_8day_mean_image(
+        collection=snow_collection,
+        source_output_name=source_output_name,
+        comparison_output_name=comparison_output_name,
+        year=year,
+    )
+    scale = snow_product.get("selected_spatial_resolution_m")
+    reducer = ee_reducer(snow_product.get("reducer", "mean"))
+    summary = summarize_image_by_watersheds(
+        image=snow_8day_image,
+        watersheds=watersheds,
+        reducer=reducer,
+        scale=scale,
+    )
+    summary = fill_missing_values_at_centroid(
+        summary=summary,
+        image=snow_8day_image,
+        output_names=[comparison_output_name],
+        reducer=reducer,
+        scale=scale,
+    )
+
+    return summary.map(
+        lambda feature: clean_snow8day_comparison_feature(
+            feature,
+            comparison_output_name,
+            year,
+        )
+    )
 
 
 def extract_era5_land_products(
