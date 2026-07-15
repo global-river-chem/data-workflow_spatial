@@ -35,6 +35,15 @@ is_true_flag <- function(x) {
   tolower(as.character(x)) %in% c("true", "1")
 }
 
+clean_lter_name <- function(x) {
+  recode(
+    trimws(x),
+    "Swedish Goverment" = "Sweden",
+    "Swedish Government" = "Sweden",
+    .default = trimws(x)
+  )
+}
+
 count_present_values <- function(data, columns) {
   if (!length(columns)) {
     return(rep(0L, nrow(data)))
@@ -168,7 +177,11 @@ wide <- export_files %>%
     read_csv(path, show_col_types = FALSE) %>%
       mutate(source_export_file = basename(path))
   }) %>%
-  bind_rows()
+  bind_rows() %>%
+  mutate(
+    lter = clean_lter_name(lter),
+    site_id = sub("^swedish_goverment__", "sweden__", site_id)
+  )
 
 if (!"used_centroid_fallback" %in% names(wide)) {
   wide$used_centroid_fallback <- NA

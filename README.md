@@ -6,12 +6,13 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 
 - This workflow is still being tested and organized.
 - Use Colab for Google Earth Engine extraction steps.
-- Use RStudio for local R workflow scripts.
 - Colab notebooks launch Earth Engine exports and then stop after one status snapshot by default.
 - Set `WAIT_FOR_TASKS = TRUE` in a Colab notebook only if you want Colab to keep polling until all launched tasks finish.
-- Current annual ERA5-Land run being tested: 2000-2025.
+- The 2000-2025 ERA5-Land tasks finished, but the source-site audit found missing watershed geometries that must be added before the run is final.
 - Current annual ERA5-Land shape: one export per year for all selected sites, or 26 yearly exports.
+- The completed files contain 497 sites per year and all six selected variables with no missing values, but 46 rows from the 543-site source spatial table were absent from the uploaded asset.
 - ERA5-Land can go back to 1950, but the current default start year is 2000.
+- ERA5-Land native resolution is about 11 km.
 - Shared old-vs-GEE comparison window: 2001-2022.
 - The comparison window is driven by overlap among ERA5-Land, MODIS NPP/greenup, and the current land-cover product.
 - ERA5-Land variables currently included: precipitation, air temperature, actual evapotranspiration, potential evapotranspiration, snow cover fraction, and snow-water equivalent.
@@ -25,6 +26,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - The watershed-size comparison checks ERA5-Land against old spatial-driver products across small, medium, and large watersheds.
 - Tiny watersheds use polygon reduction first, then a finer-scale polygon retry if needed.
 - Rows filled by the finer-scale retry are flagged with `used_fine_scale_fallback`.
+- Do not fill blank tiny-watershed values from the watershed centroid.
 - Run-group chunks are a fallback if all-sites-by-year exports are too large.
 
 ## Useful Files
@@ -35,7 +37,11 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - `colab_notebooks/test_watershed_size_comparison_era5_land.ipynb`: small, medium, and large watershed comparison Colab notebook.
 - `colab_notebooks/test_and_tiny_watersheds_era5_land.ipynb`: Andrews/tiny-watershed test Colab notebook.
 - `workflow/run_watershed_size_comparison_qa.R`: local R script for old-vs-GEE watershed-size QA.
+- `workflow/check_full_annual_era5_land.R`: checks the complete annual ERA5-Land dataset and writes QA tables and plots to Box.
+- `workflow/compare_full_annual_era5_land_to_old_drivers.R`: compares the complete ERA5-Land dataset with the previous annual spatial drivers.
 - `workflow/build_annual_inventory.R`: local R script for building annual inventory tables from completed exports.
+- `docs/roadmap.md`: current roadmap and next steps.
+- `docs/progress_updates.md`: dated progress notes and decisions.
 - `docs/current-era5-land-notes.md`: current run notes.
 - `docs/gee-full-run-plan.md`: scaling and timing notes.
 

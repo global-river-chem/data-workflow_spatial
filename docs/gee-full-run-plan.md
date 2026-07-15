@@ -11,7 +11,9 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 - `expected_area_km2` is the drainage area used for run grouping and checks.
 - `drainage_area_source` says where that drainage area came from: the active wide spatial file, the site reference table, the base watershed file, or polygon geometry.
 - Tiny watersheds are marked with `tiny_watershed`.
+- Tiny watersheds use the full polygon first, then retry the same polygon at a finer scale if the first extraction is blank.
 - Rows filled by the finer-scale polygon retry are marked with `used_fine_scale_fallback`.
+- Do not fill blank tiny-watershed values from the watershed centroid.
 
 ## ERA5-Land Runs
 

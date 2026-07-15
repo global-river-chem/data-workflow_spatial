@@ -11,14 +11,37 @@ This note holds the current run details that used to make the main README too lo
 - Primary full annual notebook: `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`
 - Primary full annual task shape: one export per year for all selected sites, so 26 exports for 2000-2025.
 - Drainage area: `expected_area_km2` comes from the active wide spatial file, with `drainSqKm` from the site reference table and polygon geometry as fallbacks.
-- New exports include `drainage_area_source` so drainage-area provenance is visible row by row.
+- New exports include `drainage_area_source` so each row shows where its drainage area came from.
 - Full annual ERA5-Land workflow: 2000-2025.
 - Shared comparison window: 2001-2022 for ERA5-Land, MODIS NPP/greenup, and GLC_FCS30D land cover.
 - ERA5-Land output columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`.
+- ERA5-Land native resolution is about 11 km.
 - Snow cover: annual exports keep the ERA5-Land metric from the original workflow, which is the annual maximum snow-cover image summarized as a watershed mean.
 - Snow cover units: early pilot exports came through on a 0-100 scale; config divides `snow_cover` by 100 so outputs use fraction units.
 - Snow cover is kept for the new ERA5-Land analysis, but it is not included in the old-vs-GEE comparison QA.
 - Small watersheds: watersheds at or below 10 km2 are marked `tiny_watershed`; blank polygon reductions retry the same polygon at a finer scale and mark `used_fine_scale_fallback`.
+
+## Small-Watershed Method
+
+For small watersheds, do not use centroid fallback.
+
+1. Extract ERA5-Land values using the full watershed polygon.
+2. If the polygon extraction is blank, retry the same polygon at a finer scale.
+3. Mark retry rows with `used_fine_scale_fallback`.
+4. Do not fill values from the watershed centroid.
+
+## Full Annual Run QA
+
+- The 2000-2025 Earth Engine tasks completed with 26 annual CSVs, but the run is not final because the uploaded asset omitted source-table sites without matched geometry.
+- Each year contains 497 sites, for 12,922 site-year rows.
+- The June 29 source spatial table contains 543 rows, so 46 source rows are absent from the completed files.
+- Six of the missing rows are marked as HydroSHEDS sites in the source table: three HYBAM sites, KRR `s65c`, LMP `nor27`, and USGS `north sylamore`.
+- All six selected ERA5-Land variables are present with no missing values.
+- Site metadata is stable across years and there are no duplicate site-year rows.
+- The fine-scale fallback was used for 24 tiny watersheds in all 26 years, or 624 rows.
+- McMurdo evaporation and potential evaporation include small negative annual values after the sign conversion, which represent net condensation rather than missing data.
+- McMurdo snow-water equivalent is 10,000 mm for all ten sites and all 26 years and should be reviewed before that variable is used in analysis.
+- The full old-vs-ERA5 comparison includes MODIS evapotranspiration for 2001-2023 and NOAA temperature and GPCP precipitation for 2000-2022.
 
 ## Product Periods
 
@@ -26,11 +49,12 @@ This note holds the current run details that used to make the main README too lo
 - MODIS annual NPP: 2001-2024.
 - MODIS greenup day: 2001-2023.
 - GLC_FCS30D annual land cover: 1985-2022. We still need to confirm whether it will be updated past 2022 or whether we need a replacement for later years.
+- GLC_FCS30D is interpolated every 5 years from 2000 back to 1985.
 
 ## Record-Length Plan
 
 - Cross-product annual comparison pull: 2001-2022, because MODIS NPP/greenup start in 2001 and the current land-cover product stops in 2022.
-- If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics.
+- If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics. Options to review include Landsat NDVI or other vegetation metrics for productivity and daylength or latitude summaries for greenup timing.
 - Current ERA5-Land annual workflow: 2000-2025.
 - Monthly ERA5-Land pull: use `monthly_by_year` timing, launch in chunks, and check the pilot before scaling up.
 - Wider ERA5-Land source availability can be revisited later, but do not treat 1950 as the default current workflow start.
@@ -38,7 +62,9 @@ This note holds the current run details that used to make the main README too lo
 ## ERA5-Land Bands
 
 - Selected now: `total_precipitation_sum`, `temperature_2m`, `total_evaporation_sum`, `potential_evaporation_sum`, `snow_cover`, `snow_depth_water_equivalent`.
-- Other available bands are listed in the Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
+- Current workflow product: `ECMWF/ERA5_LAND/DAILY_AGGR`.
+- Current workflow bands are listed in the daily aggregated Earth Engine catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR#bands
+- Related hourly catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_HOURLY#bands
 - The ERA5 export column list follows the products listed for the run, so added bands are exported instead of dropped.
 
 ## Planning Links
