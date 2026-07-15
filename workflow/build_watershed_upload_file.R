@@ -173,31 +173,31 @@ manual_shape_key <- c(
   "krr__s65c" = "s_65bc",
   "hybam__fazenda_vista_alegre" = "rio_madeira",
   "hybam__labrea" = "labrea_hydrosheds",
-  "hybam__obidos" = "amazon_obidos",
   "hybam__serrinha" = "serrinha_hydrosheds",
   "hybam__tabatinga" = "tabatinga_hydrosheds",
   "lmp__nor27" = "nor27_nldi",
   "seine__paris_12e_arrondissement" = "arrondissement_12",
   "usgs__arkansas_river_at_murray_dam" = "arkansas",
   "usgs__columbia_river_at_port_westward" = "columbia",
-  "usgs__dmf_brazos_river" = "dmf_brazos_river_nldi",
+  "usgs__dmf_brazos_river" = "dmf_brazos_river_gagesii",
   "usgs__north_sylamore" = "north_sylamore_nldi"
 )
 
-# These sites do not have reliable site-specific watershed boundaries
-unreliable_watershed_keys <- c(
-  "arc__imnavait_upper",
-  "arc__imnavait_wt_07_weir",
-  "arc__toolik_inlet",
-  "arc__tw_weir",
-  "congo_basin__nsimi_outlet",
-  "congo_basin__nsimi_spring",
-  "luq__qp",
-  "mcm__andersen_creek_at_h1",
-  "mcm__lawson_creek_at_b3",
-  "mcm__onyx_river_at_lake_vanda_weir",
-  "mcm__onyx_river_at_lower_wright_weir",
-  "mcm__priscu_stream_at_b1"
+# Sites not included in the GEE watershed asset and why
+excluded_watersheds <- c(
+  "arc__imnavait_upper" = "Exact site-specific boundary not found; the full Imnavait basin is not a substitute",
+  "arc__imnavait_wt_07_weir" = "Exact site-specific boundary not found; the full Imnavait basin is not a substitute",
+  "arc__toolik_inlet" = "Exact site-specific watershed boundary not found",
+  "arc__tw_weir" = "Exact site-specific watershed boundary not found",
+  "congo_basin__nsimi_outlet" = "Exact Nsimi catchment boundary not obtained; the broad M-TROPICS boundary is not the site watershed",
+  "congo_basin__nsimi_spring" = "Reliable spring recharge or site-specific watershed boundary not obtained",
+  "hybam__obidos" = "Duplicate of the retained GRO Obidos record",
+  "luq__qp" = "Exact Quebrada Prieta watershed boundary not found in the available LUQ watershed files",
+  "mcm__andersen_creek_at_h1" = "Available polygon is not a reliable site-specific watershed",
+  "mcm__lawson_creek_at_b3" = "Available polygon is not a reliable site-specific watershed",
+  "mcm__onyx_river_at_lake_vanda_weir" = "Available polygon is not a reliable site-specific watershed",
+  "mcm__onyx_river_at_lower_wright_weir" = "Available polygon is not a reliable site-specific watershed",
+  "mcm__priscu_stream_at_b1" = "Available polygon is not a reliable site-specific watershed"
 )
 
 match_individual_path <- function(row, index) {
@@ -228,6 +228,7 @@ read_individual_for_row <- function(row, path) {
 
   source_type <- dplyr::case_when(
     grepl("/hydrosheds_derived/", path, fixed = TRUE) ~ "hydrosheds_upstream_union",
+    grepl("/usgs_gagesii/", path, fixed = TRUE) ~ "usgs_gagesii",
     grepl("/usgs_nldi/", path, fixed = TRUE) ~ "usgs_nldi",
     grepl("/area_matched_fallback/", path, fixed = TRUE) ~ "area_matched_point_fallback",
     TRUE ~ "individual_shapefile"
@@ -333,10 +334,15 @@ if (nzchar(site_reference_file) && file.exists(site_reference_file)) {
     select(-reference_drainage_area)
 }
 
+dmf_row <- wide$.recovery_key == "usgs__dmf_brazos_river"
+wide$drainage_area[dmf_row] <- 3796.793
+wide$drainage_area_source[dmf_row] <- "USGS gage 08079600 total drainage area; 1,466 mi2 converted to km2"
+
+wide$watershed_exclusion_reason <- unname(excluded_watersheds[wide$.recovery_key])
 wide_for_report <- wide
-wide <- wide[!wide$.recovery_key %in% unreliable_watershed_keys, , drop = FALSE]
+wide <- wide[is.na(wide$watershed_exclusion_reason), , drop = FALSE]
 message(
-  "Excluded sites without reliable site-specific watersheds: ",
+  "Excluded sites from watershed recovery: ",
   nrow(wide_for_report) - nrow(wide)
 )
 
@@ -492,6 +498,7 @@ shp_dir <- file.path(output_dir, paste0("silica_gee_watersheds_", date_tag, "_sh
 shp_file <- file.path(shp_dir, paste0("silica_gee_watersheds_", date_tag, ".shp"))
 zip_file <- file.path(output_dir, paste0("silica_gee_watersheds_", date_tag, "_shapefile.zip"))
 match_file <- file.path(output_dir, paste0("watershed-geometry-check_", date_tag, ".csv"))
+not_included_file <- file.path(output_dir, paste0("watersheds-not-included_", date_tag, ".csv"))
 
 out_for_write <- out %>% select(-.site_key)
 st_write(out_for_write, geojson_file, quiet = TRUE, delete_dsn = TRUE)
@@ -511,6 +518,7 @@ match_report <- wide_for_report %>%
     Discharge_File_Name,
     drainage_area,
     input_drainage_area_source = drainage_area_source,
+    watershed_exclusion_reason,
     .recovery_key
   ) %>%
   mutate(.site_key = site_key(LTER, Shapefile_Name, Discharge_File_Name)) %>%
@@ -532,7 +540,7 @@ match_report <- wide_for_report %>%
   mutate(
     tiny_watershed = ifelse(is.na(tiny_ws), NA, tiny_ws),
     match_status = case_when(
-      .recovery_key %in% unreliable_watershed_keys ~ "excluded_unreliable_watershed",
+      !is.na(watershed_exclusion_reason) ~ "excluded_from_recovery",
       is.na(site_id) ~ "missing_geometry",
       TRUE ~ "matched"
     )
@@ -541,9 +549,20 @@ match_report <- wide_for_report %>%
   select(-.site_key, -.recovery_key)
 write.csv(match_report, match_file, row.names = FALSE, na = "")
 
+not_included <- match_report %>%
+  filter(match_status == "excluded_from_recovery") %>%
+  select(
+    LTER,
+    Stream_Name,
+    Shapefile_Name,
+    reason = watershed_exclusion_reason
+  )
+write.csv(not_included, not_included_file, row.names = FALSE, na = "")
+
 message("Wrote: ", geojson_file)
 message("Wrote: ", gpkg_file)
 message("Wrote: ", zip_file)
 message("Wrote: ", match_file)
+message("Wrote: ", not_included_file)
 message("Matched features: ", nrow(out))
 message("Missing geometry rows: ", sum(match_report$match_status == "missing_geometry"))
