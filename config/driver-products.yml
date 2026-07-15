@@ -127,8 +127,7 @@ products:
     export_end_year: 2025
     reducer: mean
     output_name: snow_cover_fraction
-    comparison_output_name: snow_cover_max_8day_watershed_fraction
-    notes: Main annual analysis uses the ERA5-Land annual maximum snow-cover image summarized as a watershed mean. Old-vs-GEE snow QA uses the separate comparison_output_name, which is the annual maximum of 8-day mean watershed snow-cover fraction and is closer to old MODIS snow_YYYY_max_prop_area. Pilot exports came through on a 0-100 scale, so divide by 100 and keep outputs as fractions
+    notes: Annual analysis uses the ERA5-Land annual maximum snow-cover image summarized as a watershed mean. Pilot exports came through on a 0-100 scale, so divide by 100 and keep outputs as fractions
 
   snow_water_equiv:
     status: selected

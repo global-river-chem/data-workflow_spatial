@@ -17,7 +17,7 @@ This note holds the current run details that used to make the main README too lo
 - ERA5-Land output columns: `precip_mm`, `temp_degC`, `evapotrans_mm`, `potential_evap_mm`, `snow_cover_fraction`, `snow_water_equiv_mm`.
 - Snow cover: annual exports keep the ERA5-Land metric from the original workflow, which is the annual maximum snow-cover image summarized as a watershed mean.
 - Snow cover units: early pilot exports came through on a 0-100 scale; config divides `snow_cover` by 100 so outputs use fraction units.
-- Snow-cover QA decision: use `snow_cover_fraction` for the new ERA5-Land analysis. For old-vs-GEE snow QA only, the comparison notebooks also export `snow_cover_max_8day_watershed_fraction`, which is the annual maximum of 8-day mean watershed ERA5-Land snow-cover fraction and is closer to old MODIS `snow_YYYY_max_prop_area`.
+- Snow cover is kept for the new ERA5-Land analysis, but it is not included in the old-vs-GEE comparison QA.
 - Small watersheds: watersheds at or below 10 km2 are marked `tiny_watershed`; blank polygon reductions retry the same polygon at a finer scale and mark `used_fine_scale_fallback`.
 
 ## Product Periods

@@ -16,7 +16,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - The comparison window is driven by overlap among ERA5-Land, MODIS NPP/greenup, and the current land-cover product.
 - ERA5-Land variables currently included: precipitation, air temperature, actual evapotranspiration, potential evapotranspiration, snow cover fraction, and snow-water equivalent.
 - Use `snow_cover_fraction` for the new ERA5-Land analysis.
-- For old-vs-GEE snow QA only, use the snow-only comparison notebook to export `snow_cover_max_8day_watershed_fraction`, which is closer to old MODIS `snow_YYYY_max_prop_area`.
+- Snow cover is not included in the old-vs-GEE comparison QA.
 - MODIS NPP starts in 2001 and currently runs through 2024 in the workflow config.
 - MODIS greenup day starts in 2001 and currently runs through 2023 in the workflow config.
 - If we want NPP or phenology metrics before 2001, we need to identify alternative products or alternative metrics.
@@ -33,7 +33,6 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`: full annual ERA5-Land Colab notebook.
 - `colab_notebooks/fallback_configured_gee_exports.ipynb`: config-driven fallback Colab notebook.
 - `colab_notebooks/test_watershed_size_comparison_era5_land.ipynb`: small, medium, and large watershed comparison Colab notebook.
-- `colab_notebooks/test_watershed_size_snow8day_only_era5_land.ipynb`: snow-only watershed-size comparison Colab notebook for MODIS snow-cover QA.
 - `colab_notebooks/test_and_tiny_watersheds_era5_land.ipynb`: Andrews/tiny-watershed test Colab notebook.
 - `workflow/run_watershed_size_comparison_qa.R`: local R script for old-vs-GEE watershed-size QA.
 - `workflow/build_annual_inventory.R`: local R script for building annual inventory tables from completed exports.

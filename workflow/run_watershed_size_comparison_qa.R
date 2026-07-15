@@ -14,11 +14,7 @@ env_bool <- function(name, default) {
 
 # Settings ---------------------------------------------------------------
 
-base_run_label <- "comparison_sites_fine_scale"
-snow_run_label <- "comparison_sites_snow8day_only"
-run_label <- base_run_label
-comparison_slug <- "watershed_size_comparison"
-plot_subject <- "Watershed-size comparison sites"
+run_label <- "comparison_sites_fine_scale"
 start_year <- 2001
 end_year <- 2023
 
@@ -27,16 +23,15 @@ drive_export_folder_id <- Sys.getenv("SILICA_DRIVE_EXPORT_ROOT_ID", unset = "1Y4
 drive_output_folder_id <- Sys.getenv("SILICA_DRIVE_QA_OUTPUT_ROOT_ID", unset = "1hYedMgoR1907nwtOjjjqYFzjG28gk3-T")
 direct_drive_export_folder_id <- Sys.getenv("SILICA_DIRECT_DRIVE_EXPORT_FOLDER_ID", unset = "")
 
-base_drive_export_subfolder <- "gee_exports_era5_land_watershed_size_comparison_sites_2001_2023"
-snow_drive_export_subfolder <- "watershed_size_snow8day_only_2001_2023"
+drive_export_subfolder <- "gee_exports_era5_land_watershed_size_comparison_sites_2001_2023"
 drive_qa_subfolder <- "watershed_size_qa"
 drive_plot_folder <- "plots"
 drive_csv_folder <- "tables"
 
-base_previous_drive_export_subfolders <- c(
+previous_drive_export_subfolders <- c(
   "gee_exports_era5_land_watershed_size_comparison_sites_2001_2023"
 )
-base_previous_drive_export_folder_ids <- c(
+previous_drive_export_folder_ids <- c(
   "19eYZLEfCtNAxJvQv1-9y53XU6emaUh3F"
 )
 
@@ -124,22 +119,14 @@ box_gee_output_root <- file.path(
 )
 box_qa_root <- file.path(box_spatial_root, "qaqc", "gee")
 expected_years <- seq.int(start_year, end_year)
-base_expected_csv_names <- paste0(
+expected_csv_names <- paste0(
   "era5_land_",
   expected_years,
   "_",
-  base_run_label,
+  run_label,
   "_watershed_extract.csv"
 )
-snow_expected_csv_names <- paste0(
-  "era5_land_",
-  expected_years,
-  "_",
-  snow_run_label,
-  "_watershed_extract.csv"
-)
-snow_comparison_column <- "snow_cover_max_8day_watershed_fraction"
-base_local_export_folder <- Sys.getenv(
+local_export_folder <- Sys.getenv(
   "SILICA_BASE_ERA5_EXPORT_FOLDER",
   unset = file.path(
     box_gee_output_root,
@@ -147,25 +134,16 @@ base_local_export_folder <- Sys.getenv(
     paste0("era5_", start_year, "_", end_year)
   )
 )
-base_download_folder <- file.path(
+download_folder <- file.path(
   box_gee_output_root,
   paste0("gee_exports_watershed_size_base_", today_tag),
   paste0("era5_", start_year, "_", end_year)
-)
-snow_local_export_folder <- Sys.getenv(
-  "SILICA_SNOW8DAY_EXPORT_FOLDER",
-  unset = file.path(
-    box_gee_output_root,
-    paste0("gee_exports_watershed_size_snow8day_only_", today_tag),
-    paste0("era5_", start_year, "_", end_year)
-  )
 )
 output_folder <- file.path(
   box_qa_root,
   paste0("watershed_size_qa_", today_tag)
 )
-dir.create(base_download_folder, recursive = TRUE, showWarnings = FALSE)
-dir.create(snow_local_export_folder, recursive = TRUE, showWarnings = FALSE)
+dir.create(download_folder, recursive = TRUE, showWarnings = FALSE)
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 
 # General helpers --------------------------------------------------------
@@ -176,16 +154,6 @@ regex_escape <- function(x) {
 
 exact_pattern <- function(file_name) {
   paste0("^", regex_escape(file_name), "$")
-}
-
-as_fraction <- function(x) {
-  if (all(is.na(x))) {
-    return(x)
-  }
-  if (max(x, na.rm = TRUE) > 1.5) {
-    return(x / 100)
-  }
-  x
 }
 
 parse_year <- function(x) {
@@ -446,39 +414,40 @@ upload_output_to_drive <- function(path, drive_folder) {
   invisible(uploaded)
 }
 
+local_export_set_complete <- function(folder, expected_csv_names) {
+  dir.exists(folder) && all(file.exists(file.path(folder, expected_csv_names)))
+}
+
 # Step 1: organize and download GEE exports -----------------------------
 
-if (download_from_drive || upload_to_drive) {
-  message("Step 1a: organizing completed base ERA5-Land CSV exports in Google Drive.")
-  base_run_folder <- organize_drive_exports(
-    drive_export_subfolder = base_drive_export_subfolder,
-    expected_csv_names = base_expected_csv_names,
-    previous_subfolders = base_previous_drive_export_subfolders,
-    previous_folder_ids = base_previous_drive_export_folder_ids
-  )
+exports_are_local <- local_export_set_complete(local_export_folder, expected_csv_names)
 
-  message("Step 1b: organizing completed snow-only GEE CSV exports in Google Drive.")
-  snow_run_folder <- organize_drive_exports(
-    drive_export_subfolder = snow_drive_export_subfolder,
-    expected_csv_names = snow_expected_csv_names
-  )
+if (download_from_drive || upload_to_drive) {
+  if (exports_are_local) {
+    message("Step 1: using complete local ERA5-Land CSV exports: ", local_export_folder)
+    run_folder <- NULL
+  } else {
+    message("Step 1: organizing completed ERA5-Land CSV exports in Google Drive.")
+    run_folder <- organize_drive_exports(
+      drive_export_subfolder = drive_export_subfolder,
+      expected_csv_names = expected_csv_names,
+      previous_subfolders = previous_drive_export_subfolders,
+      previous_folder_ids = previous_drive_export_folder_ids
+    )
+  }
 } else {
   message("Step 1: using local GEE CSV exports.")
-  base_run_folder <- NULL
-  snow_run_folder <- NULL
+  run_folder <- NULL
 }
 
 if (download_from_drive) {
-  download_drive_exports(
-    run_folder_id = base_run_folder$id[[1]],
-    expected_csv_names = base_expected_csv_names,
-    local_export_folder = base_download_folder
-  )
-  download_drive_exports(
-    run_folder_id = snow_run_folder$id[[1]],
-    expected_csv_names = snow_expected_csv_names,
-    local_export_folder = snow_local_export_folder
-  )
+  if (!exports_are_local) {
+    download_drive_exports(
+      run_folder_id = run_folder$id[[1]],
+      expected_csv_names = expected_csv_names,
+      local_export_folder = download_folder
+    )
+  }
 }
 
 box_output_dirs <- if (dir.exists(box_gee_output_root)) {
@@ -547,33 +516,18 @@ find_export_files <- function(label, preferred_local_folders, expected_years, ex
   list(folder = export_folder, files = export_files)
 }
 
-base_export <- find_export_files(
-  label = base_run_label,
-  preferred_local_folders = c(base_download_folder, base_local_export_folder),
+era5_export <- find_export_files(
+  label = run_label,
+  preferred_local_folders = c(download_folder, local_export_folder),
   expected_years = expected_years,
-  export_label = "base ERA5-Land"
-)
-
-snow_export <- find_export_files(
-  label = snow_run_label,
-  preferred_local_folders = snow_local_export_folder,
-  expected_years = expected_years,
-  export_label = "snow-only ERA5-Land"
+  export_label = "ERA5-Land"
 )
 
 # Step 2: compare ERA5-Land with old spatial-driver products -------------
 
 message("Step 2: running watershed-size old-vs-GEE QA.")
 
-era5_raw <- base_export$files %>%
-  lapply(read_csv, show_col_types = FALSE) %>%
-  bind_rows() %>%
-  mutate(
-    lter_key = toupper(lter),
-    shapefile_key = toupper(shapefile_name)
-  )
-
-snow_raw <- snow_export$files %>%
+era5_raw <- era5_export$files %>%
   lapply(read_csv, show_col_types = FALSE) %>%
   bind_rows() %>%
   mutate(
@@ -584,17 +538,10 @@ snow_raw <- snow_export$files %>%
 if (!"used_centroid_fallback" %in% names(era5_raw)) {
   era5_raw$used_centroid_fallback <- NA
 }
-if (!"used_centroid_fallback" %in% names(snow_raw)) {
-  snow_raw$used_centroid_fallback <- NA
-}
 
 missing_era5_columns <- setdiff(
   c("used_fine_scale_fallback", "precip_mm", "temp_degC", "evapotrans_mm"),
   names(era5_raw)
-)
-missing_snow_columns <- setdiff(
-  snow_comparison_column,
-  names(snow_raw)
 )
 
 if (length(missing_era5_columns)) {
@@ -605,28 +552,6 @@ if (length(missing_era5_columns)) {
     call. = FALSE
   )
 }
-if (length(missing_snow_columns)) {
-  stop(
-    "The snow-only ERA5-Land files are missing required columns: ",
-    paste(missing_snow_columns, collapse = ", "),
-    ". Re-run the snow-only watershed-size Colab and confirm the Export columns line includes ",
-    snow_comparison_column,
-    ".",
-    call. = FALSE
-  )
-}
-
-snow_lookup <- snow_raw %>%
-  select(
-    lter_key,
-    shapefile_key,
-    year,
-    all_of(snow_comparison_column),
-    used_centroid_fallback_snow8day = used_centroid_fallback
-  )
-
-era5_raw <- era5_raw %>%
-  left_join(snow_lookup, by = c("lter_key", "shapefile_key", "year"))
 
 era5 <- era5_raw %>%
   mutate(
@@ -641,18 +566,9 @@ era5 <- era5_raw %>%
       NA_character_,
       as.character(used_fine_scale_fallback)
     ),
-    used_centroid_fallback_snow8day = if_else(
-      is.na(used_centroid_fallback_snow8day),
-      NA_character_,
-      as.character(used_centroid_fallback_snow8day)
-    ),
     era5_fallback_method = case_when(
       is_true_flag(used_fine_scale_fallback) ~ "Fine-scale polygon retry",
       is_true_flag(used_centroid_fallback) ~ "Centroid fill",
-      TRUE ~ "Native-scale polygon mean"
-    ),
-    snow_fallback_method = case_when(
-      is_true_flag(used_centroid_fallback_snow8day) ~ "Centroid fill",
       TRUE ~ "Native-scale polygon mean"
     )
   )
@@ -665,18 +581,12 @@ reference_drivers <- read_csv(reference_driver_path, show_col_types = FALSE) %>%
   )
 
 modis_et_cols <- grep("^evapotrans_[0-9]{4}_kg_m2$", names(reference_drivers), value = TRUE)
-modis_snow_cols <- grep("^snow_[0-9]{4}_max_prop_area$", names(reference_drivers), value = TRUE)
 noaa_temp_cols <- grep("^temp_[0-9]{4}_degC$", names(reference_drivers), value = TRUE)
 gpcp_precip_cols <- grep("^precip_[0-9]{4}_mm_per_day$", names(reference_drivers), value = TRUE)
 
 modis_et <- reference_drivers %>%
   select(LTER, lter_key, Shapefile_Name, Stream_Name, shapefile_key, all_of(modis_et_cols)) %>%
   pivot_longer(all_of(modis_et_cols), names_to = "reference_variable", values_to = "reference_value") %>%
-  mutate(year = parse_year(reference_variable))
-
-modis_snow <- reference_drivers %>%
-  select(LTER, lter_key, Shapefile_Name, Stream_Name, shapefile_key, all_of(modis_snow_cols)) %>%
-  pivot_longer(all_of(modis_snow_cols), names_to = "reference_variable", values_to = "reference_value") %>%
   mutate(year = parse_year(reference_variable))
 
 noaa_temp <- reference_drivers %>%
@@ -712,37 +622,6 @@ et_points <- era5 %>%
     era5_value = evapotrans_mm,
     reference_value
   )
-
-snow_metric_note <- paste(
-  "ERA5-Land comparison column is annual maximum 8-day mean watershed snow-cover fraction;",
-  "old driver is annual maximum 8-day MODIS snow-covered area proportion.",
-  "Use ERA5-Land snow_cover_fraction, not this comparison column, for the main analysis."
-)
-
-snow_points <- if (snow_comparison_column %in% names(era5)) {
-  era5 %>%
-    inner_join(modis_snow, by = c("lter_key", "shapefile_key", "year"), suffix = c("_era5", "_modis")) %>%
-    transmute(
-      comparison = "Snow cover",
-      reference_product = "MODIS max snow-area driver",
-      reference_variable,
-      metric_note = snow_metric_note,
-      lter,
-      site_id,
-      shapefile_name,
-      stream_name,
-      year,
-      tiny_watershed,
-      used_fine_scale_fallback = NA_character_,
-      used_centroid_fallback = used_centroid_fallback_snow8day,
-      era5_fallback_method = snow_fallback_method,
-      polygon_area_km2,
-      era5_value = as_fraction(.data[[snow_comparison_column]]),
-      reference_value = as_fraction(reference_value)
-    )
-} else {
-  tibble()
-}
 
 temp_points <- era5 %>%
   inner_join(noaa_temp, by = c("lter_key", "shapefile_key", "year"), suffix = c("_era5", "_noaa")) %>%
@@ -786,7 +665,7 @@ precip_points <- era5 %>%
     reference_value
   )
 
-comparison_points <- bind_rows(et_points, snow_points, temp_points, precip_points)
+comparison_points <- bind_rows(et_points, temp_points, precip_points)
 
 if (!nrow(comparison_points)) {
   stop("No matching rows were found between the ERA5-Land and reference driver file.", call. = FALSE)
@@ -1096,44 +975,27 @@ write_csv(filter(site_stats, grepl("^AND: ", site_panel)), and_site_stats_file, 
 
 plot_files <- character(0)
 if (write_site_plots) {
-  plot_specs <- c(
+  plot_specs <- list(
     list(
-      list(
-        data = filter(comparison_points, comparison == "Evapotranspiration"),
-        reference_label = "MODIS ET driver",
-        x_label = "MODIS ET driver (kg m-2 yr-1)",
-        y_label = "ERA5-Land ET (mm yr-1)",
-        caption_note = NULL
-      )
+      data = filter(comparison_points, comparison == "Evapotranspiration"),
+      reference_label = "MODIS ET driver",
+      x_label = "MODIS ET driver (kg m-2 yr-1)",
+      y_label = "ERA5-Land ET (mm yr-1)",
+      caption_note = NULL
     ),
-    if (nrow(snow_points)) {
-      list(
-        list(
-          data = filter(comparison_points, comparison == "Snow cover"),
-          reference_label = "MODIS max snow-area driver",
-          x_label = "Old MODIS max snow-covered area fraction",
-          y_label = "ERA5-Land max 8-day watershed snow-cover fraction",
-          caption_note = "Snow uses a comparison-only 8-day ERA5-Land metric; use snow_cover_fraction for the main analysis."
-        )
-      )
-    } else {
-      list()
-    },
     list(
-      list(
-        data = filter(comparison_points, comparison == "Air temperature"),
-        reference_label = "NOAA temperature driver",
-        x_label = "NOAA temperature driver (deg C)",
-        y_label = "ERA5-Land air temperature (deg C)",
-        caption_note = NULL
-      ),
-      list(
-        data = filter(comparison_points, comparison == "Precipitation"),
-        reference_label = "GPCP precipitation driver",
-        x_label = "GPCP precipitation driver (mm yr-1)",
-        y_label = "ERA5-Land precipitation (mm yr-1)",
-        caption_note = NULL
-      )
+      data = filter(comparison_points, comparison == "Air temperature"),
+      reference_label = "NOAA temperature driver",
+      x_label = "NOAA temperature driver (deg C)",
+      y_label = "ERA5-Land air temperature (deg C)",
+      caption_note = NULL
+    ),
+    list(
+      data = filter(comparison_points, comparison == "Precipitation"),
+      reference_label = "GPCP precipitation driver",
+      x_label = "GPCP precipitation driver (mm yr-1)",
+      y_label = "ERA5-Land precipitation (mm yr-1)",
+      caption_note = NULL
     )
   )
 
@@ -1218,14 +1080,9 @@ write_csv(fallback_by_site, fallback_by_site_file, na = "")
 write_csv(shared_value_groups, shared_value_groups_file, na = "")
 
 message("Wrote comparison outputs to: ", normalizePath(output_folder))
-message("Base ERA5-Land run label: ", base_run_label)
-message("Snow-only ERA5-Land run label: ", snow_run_label)
+message("ERA5-Land run label: ", run_label)
 message("ERA5-Land years used: ", paste(sort(unique(era5$year)), collapse = ", "))
-if (nrow(snow_points)) {
-  message("Snow-cover QA used comparison-only ERA5-Land column: ", snow_comparison_column)
-} else {
-  message("Snow-cover QA skipped because the GEE exports do not include comparison-only column: ", snow_comparison_column)
-}
+message("Snow cover is not included in this old-vs-GEE comparison QA.")
 
 if (upload_to_drive) {
   authenticate_drive()
