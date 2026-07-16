@@ -43,8 +43,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - `workflow/check_full_annual_era5_land.R`: checks the complete annual ERA5-Land dataset and writes QA tables and plots to Box.
 - `workflow/compare_full_annual_era5_land_to_old_drivers.R`: compares the complete ERA5-Land dataset with the previous annual spatial drivers.
 - `workflow/build_annual_inventory.R`: local R script for building annual inventory tables from completed exports.
-- `docs/roadmap.md`: current roadmap and next steps.
-- `docs/progress_updates.md`: dated progress notes and decisions.
+- Project roadmap and progress notes are maintained separately.
 - `docs/current-era5-land-notes.md`: current run notes.
 - `docs/human-impact-workflow.md`: human-impact run instructions.
 - `docs/human-impact-notes.md`: human-impact dataset notes.
