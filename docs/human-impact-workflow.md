@@ -1,6 +1,6 @@
-# Priority Human-Impact GEE Workflow
+# Human-Impact GEE Workflow
 
-Run [the Colab notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/run_human_impacts_priority.ipynb).
+Run [the Colab notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/run_human_impacts.ipynb).
 
 The notebook exports watershed summaries for:
 
@@ -24,7 +24,7 @@ begin with `human_impacts_`.
 
 Files:
 
-- `colab_notebooks/run_human_impacts_priority.ipynb`: Colab launcher;
+- `colab_notebooks/run_human_impacts.ipynb`: Colab launcher;
 - `config/human-impact-products.yml`: dataset settings and exported fields;
 - `src/gee_spatial/human_impacts.py`: the code that summarizes each watershed.
 

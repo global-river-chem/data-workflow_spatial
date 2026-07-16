@@ -37,7 +37,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - `colab_notebooks/fallback_configured_gee_exports.ipynb`: config-driven fallback Colab notebook.
 - `colab_notebooks/test_watershed_size_comparison_era5_land.ipynb`: small, medium, and large watershed comparison Colab notebook.
 - `colab_notebooks/test_and_tiny_watersheds_era5_land.ipynb`: Andrews/tiny-watershed test Colab notebook.
-- `colab_notebooks/run_human_impacts_priority.ipynb`: global human-impact Colab notebook.
+- `colab_notebooks/run_human_impacts.ipynb`: global human-impact Colab notebook.
 - `config/human-impact-products.yml`: human-impact dataset settings and output fields.
 - `workflow/run_watershed_size_comparison_qa.R`: local R script for old-vs-GEE watershed-size QA.
 - `workflow/check_full_annual_era5_land.R`: checks the complete annual ERA5-Land dataset and writes QA tables and plots to Box.

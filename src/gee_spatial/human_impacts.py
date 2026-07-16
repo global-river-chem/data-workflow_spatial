@@ -1,4 +1,4 @@
-"""GEE watershed summaries for the priority human-impact datasets.
+"""GEE watershed summaries for the global human-impact datasets.
 
 Dataset settings live in ``human-impact-products.yml``. The Colab notebook
 uses this module to summarize LandScan, GHSL, Global Dam Watch, NPKGRIDS, and
