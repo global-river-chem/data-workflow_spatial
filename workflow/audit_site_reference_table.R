@@ -149,6 +149,7 @@ spatial <- spatial_raw %>%
     lter_key = norm_key(clean_lter(LTER)),
     stream_key = norm_key(clean_stream(Stream_Name)),
     shapefile_key = norm_key(Shapefile_Name),
+    previous_hydrosheds_used = as.logical(hydrosheds_used),
     spatial_stream_key = make_key(lter_key, stream_key),
     spatial_shapefile_key = make_key(lter_key, shapefile_key)
   )
@@ -161,8 +162,17 @@ watersheds <- watershed_check_raw %>%
     watershed_stream_key = make_key(lter_key, stream_key),
     watershed_shapefile_key = make_key(lter_key, shapefile_key),
     watershed_status = clean_text(match_status),
+    watershed_source = clean_text(source_type),
     watershed_exclusion_reason = clean_text(watershed_exclusion_reason)
   )
+
+spatial_stream_lookup <- spatial %>%
+  filter(!is.na(spatial_stream_key)) %>%
+  distinct(spatial_stream_key, .keep_all = TRUE)
+
+spatial_shapefile_lookup <- spatial %>%
+  filter(!is.na(spatial_shapefile_key)) %>%
+  distinct(spatial_shapefile_key, .keep_all = TRUE)
 
 watershed_stream_lookup <- watersheds %>%
   filter(!is.na(watershed_stream_key)) %>%
@@ -266,6 +276,37 @@ audit <- reference_raw %>%
   )
 
 
+# Add the previous HydroSHEDS result --------------------------------------
+
+audit$previous_hydrosheds_used <- coalesce(
+  lookup_value(
+    audit$reference_stream_key,
+    spatial_stream_lookup$spatial_stream_key,
+    spatial_stream_lookup$previous_hydrosheds_used
+  ),
+  lookup_value(
+    audit$reference_original_stream_key,
+    spatial_stream_lookup$spatial_stream_key,
+    spatial_stream_lookup$previous_hydrosheds_used
+  ),
+  lookup_value(
+    audit$reference_shapefile_key,
+    spatial_shapefile_lookup$spatial_shapefile_key,
+    spatial_shapefile_lookup$previous_hydrosheds_used
+  )
+)
+
+audit <- audit %>%
+  mutate(
+    previous_hydrosheds_status = case_when(
+      !in_current_spatial ~ "not_in_current_spatial",
+      previous_hydrosheds_used ~ "used_in_previous_spatial_workflow",
+      !previous_hydrosheds_used ~ "not_used_in_previous_spatial_workflow",
+      TRUE ~ "not_recorded"
+    )
+  )
+
+
 # Add the current GEE watershed status ------------------------------------
 
 audit$watershed_status <- coalesce(
@@ -301,6 +342,24 @@ audit$watershed_exclusion_reason <- coalesce(
     audit$reference_shapefile_key,
     watershed_shapefile_lookup$watershed_shapefile_key,
     watershed_shapefile_lookup$watershed_exclusion_reason
+  )
+)
+
+audit$watershed_source <- coalesce(
+  lookup_value(
+    audit$reference_stream_key,
+    watershed_stream_lookup$watershed_stream_key,
+    watershed_stream_lookup$watershed_source
+  ),
+  lookup_value(
+    audit$reference_original_stream_key,
+    watershed_stream_lookup$watershed_stream_key,
+    watershed_stream_lookup$watershed_source
+  ),
+  lookup_value(
+    audit$reference_shapefile_key,
+    watershed_shapefile_lookup$watershed_shapefile_key,
+    watershed_shapefile_lookup$watershed_source
   )
 )
 
@@ -506,7 +565,10 @@ audit <- audit %>%
     shapefile_metadata_status,
     in_current_spatial,
     spatial_match_method,
+    previous_hydrosheds_used,
+    previous_hydrosheds_status,
     watershed_status,
+    watershed_source,
     workflow_status,
     review_priority,
     audit_reason
@@ -535,6 +597,8 @@ cat(
 )
 cat("Rows linked to a current GEE watershed:", sum(audit$watershed_status == "matched"), "\n")
 cat("Rows with documented watershed exclusions:", sum(audit$watershed_status == "excluded_from_recovery"), "\n")
+cat("Previous HydroSHEDS status:\n")
+print(table(audit$previous_hydrosheds_status, useNA = "ifany"))
 cat("Coordinate status:\n")
 print(table(audit$coordinate_status, useNA = "ifany"))
 cat("Review priority:\n")
