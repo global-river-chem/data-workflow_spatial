@@ -4,10 +4,10 @@ This note is for scaling the current Earth Engine pilot to all current watershed
 
 ## Current Watershed Set
 
-- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_20260706_shapefile`
-- Geometry check file: `watershed-geometry-check_20260706.csv`
-- Matched watershed rows in the current asset file: 497
-- Run groups: 49
+- Watershed asset: `projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715`
+- Geometry check file: `watershed-geometry-check_20260715.csv`
+- Matched watershed rows and unique site IDs in the current asset: 530
+- Run groups in the active Earth Engine asset: 52
 - `expected_area_km2` is the drainage area used for run grouping and checks.
 - `drainage_area_source` says where that drainage area came from: the active wide spatial file, the site reference table, the base watershed file, or polygon geometry.
 - Tiny watersheds are marked with `tiny_watershed`.
@@ -27,21 +27,21 @@ The current run configs use the ERA5-Land products already listed in `config/dri
 
 Annual ERA5-Land snow cover stays in the full analysis export as `snow_cover_fraction` using the original workflow metric: annual maximum snow-cover image summarized as a watershed mean. Snow cover is not included in the old-vs-GEE comparison QA.
 
-Expected task counts with the current 497-row watershed asset:
+Expected task counts with the current 530-row watershed asset:
 
 | Run | Years | Run groups | Export files/tasks | Exported site-period rows |
 |---|---:|---:|---:|---:|
-| ERA5 annual, 2000-2025 full, all sites by year | 26 | none | 26 | 12,922 |
-| ERA5 annual, 2000-2025 full, grouped fallback | 26 | 49 | 1,274 | 12,922 |
-| ERA5 annual, 2001-2022 overlap | 22 | 49 | 1,078 | 10,934 |
-| ERA5 monthly, 2000-2025 full, bundled by year | 26 | 49 | 1,274 | 155,064 |
-| ERA5 monthly, 2000-2025 full, one task per month | 312 | 49 | 15,288 | 155,064 |
+| ERA5 annual, 2000-2025 full, all sites by year | 26 | none | 26 | 13,780 |
+| ERA5 annual, 2000-2025 full, grouped fallback | 26 | 52 | 1,352 | 13,780 |
+| ERA5 annual, 2001-2022 overlap | 22 | 52 | 1,144 | 11,660 |
+| ERA5 monthly, 2000-2025 full, bundled by year | 26 | 52 | 1,352 | 165,360 |
+| ERA5 monthly, 2000-2025 full, one task per month | 312 | 52 | 16,224 | 165,360 |
 
 So the monthly run should use `monthly_by_year`. It creates the same number of rows as a one-file-per-month approach, but far fewer files and tasks.
 
 If we later add weekly or daily ERA5-Land outputs for the same 2000-2025 window, the row counts get much larger. The best task chunking for those runs still needs a pilot, because a year of daily reductions may be too much for one export task even when the final CSV size is manageable.
 
-Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. Start with the 26-task all-sites-by-year annual run. If those tasks are too large, switch to the 1,274-task grouped fallback and move through small chunks. Quota details: https://developers.google.com/earth-engine/guides/usage
+Earth Engine's default average batch-task concurrency is 2, and the ready queue limit is 3,000 tasks. Start with the 26-task all-sites-by-year annual run. If those tasks are too large, switch to the 1,352-task grouped fallback and move through small chunks. Quota details: https://developers.google.com/earth-engine/guides/usage
 
 Use this command to estimate any configured grouped run:
 

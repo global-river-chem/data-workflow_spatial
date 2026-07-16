@@ -3,6 +3,25 @@
 Use this file for dated notes about work completed, decisions made, and what to
 pick up next. Keep the current plan in [roadmap.md](roadmap.md).
 
+## 2026-07-16
+
+### Progress
+
+- Built and independently verified the production watershed asset at
+  `projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715`.
+- Confirmed 530 rows, 530 distinct site IDs, the complete watershed metadata
+  schema, and 52 run groups.
+- Moved both former 497-row production assets into the project archive folder:
+  `silica_gee_watersheds_20260629_497rows_archived_20260716` and
+  `silica_gee_watersheds_20260706_shapefile_497rows_archived_20260716`.
+- Updated `config/gee-assets.yml` and the run documentation to use the new
+  asset.
+
+### Next
+
+- Rerun all 26 annual ERA5-Land tasks for 2000-2025 with all six configured
+  variables and verify 530 unique site IDs in every output.
+
 ## 2026-07-15
 
 ### Progress

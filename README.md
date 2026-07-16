@@ -8,9 +8,10 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 - Use Colab for Google Earth Engine extraction steps.
 - Colab notebooks launch Earth Engine exports and then stop after one status snapshot by default.
 - Set `WAIT_FOR_TASKS = TRUE` in a Colab notebook only if you want Colab to keep polling until all launched tasks finish.
-- The 2000-2025 ERA5-Land tasks finished, but the source-site audit found missing watershed geometries that must be added before the run is final.
+- The first 2000-2025 ERA5-Land run finished for the legacy 497-row watershed asset; it must be rerun before the annual dataset is final.
+- The active production watershed asset now contains 530 rows and 530 unique site IDs: `projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715`.
 - Current annual ERA5-Land shape: one export per year for all selected sites, or 26 yearly exports.
-- The completed files contain 497 sites per year and all six selected variables with no missing values, but 46 rows from the 543-site source spatial table were absent from the uploaded asset.
+- The completed legacy files contain 497 rows per year and all six selected variables with no missing values. Do not treat them as the final 530-site run.
 - ERA5-Land can go back to 1950, but the current default start year is 2000.
 - ERA5-Land native resolution is about 11 km.
 - Shared old-vs-GEE comparison window: 2001-2022.

@@ -13,9 +13,9 @@ chemistry spatial dataset.
 
 - The 2000-2025 ERA5-Land Earth Engine tasks completed with 26 annual CSVs.
 - The completed files include 497 sites per year and all six selected variables.
-- The run is not final yet because 46 rows from the 543-site source spatial
-  table were not included in the uploaded Earth Engine asset.
-- Six missing rows are marked as HydroSHEDS sites in the source table.
+- Those files are the legacy run and are not final.
+- The active Earth Engine watershed asset now contains 530 rows and 530 unique
+  site IDs; the former 497-row production assets are archived.
 - Snow cover is kept for the new ERA5-Land analysis, but it is not included in
   the old-vs-GEE comparison QA.
 - ERA5-Land native resolution is about 11 km, so small watersheds need explicit
@@ -47,10 +47,12 @@ chemistry spatial dataset.
 
 ## Next Steps
 
-1. Fix the missing watershed geometries before treating the full run as final.
-2. Rebuild the Earth Engine upload asset after the missing geometry issue is
-   resolved.
-3. Rerun the full annual ERA5-Land extraction if the asset changes.
+1. Rerun the full annual 2000-2025 ERA5-Land extraction with the active
+   530-site asset.
+2. Confirm that every annual output contains 530 unique site IDs and all six
+   configured variables.
+3. Replace or clearly archive the legacy 497-row annual exports after the new
+   run passes QA.
 4. Review McMurdo snow-water equivalent before using that variable in analysis.
 5. Review the old-vs-ERA5 comparison plots for precipitation, temperature, and
    evapotranspiration.

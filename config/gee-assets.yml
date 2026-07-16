@@ -2,13 +2,17 @@ earth_engine:
   project: silica-synthesis
 
 watersheds:
-  asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_20260706_shapefile
+  asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715
   id_column: site_id
   run_group_column: run_group
-  earth_engine_run_group_column: run_grp
-  upload_status: ready_to_upload_as_zipped_shapefile
-  upload_file: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/silica_gee_watersheds_20260706_shapefile.zip
-  geometry_check: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/watershed-geometry-check_20260706.csv
+  earth_engine_run_group_column: run_group
+  upload_status: uploaded_and_verified_530_sites
+  verified_feature_count: 530
+  upload_file: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260715-gee-watersheds/silica_gee_watersheds_20260715_shapefile.zip
+  geometry_check: /Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions/spatial-data-files/gee/earth-engine-input-files/20260715-gee-watersheds/watershed-geometry-check_20260715.csv
+  archived_previous_asset_ids:
+    - projects/silica-synthesis/assets/archive/silica_gee_watersheds_20260629_497rows_archived_20260716
+    - projects/silica-synthesis/assets/archive/silica_gee_watersheds_20260706_shapefile_497rows_archived_20260716
 
 exports:
   destination: drive

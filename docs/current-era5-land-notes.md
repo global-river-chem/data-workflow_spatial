@@ -2,10 +2,17 @@
 
 This note holds the current run details that used to make the main README too long.
 
-## Current First Pull
+## Current Watershed Asset
 
-- Watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/silica_gee_watersheds_20260706_shapefile.zip`
-- Geometry check: `spatial-data-files/gee/earth-engine-input-files/20260706-gee-watersheds/watershed-geometry-check_20260706.csv`
+- Active asset: `projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715`
+- Verified rows and unique site IDs: 530
+- Watershed upload file: `spatial-data-files/gee/earth-engine-input-files/20260715-gee-watersheds/silica_gee_watersheds_20260715_shapefile.zip`
+- Geometry check: `spatial-data-files/gee/earth-engine-input-files/20260715-gee-watersheds/watershed-geometry-check_20260715.csv`
+- Archived 497-row assets:
+  - `projects/silica-synthesis/assets/archive/silica_gee_watersheds_20260629_497rows_archived_20260716`
+  - `projects/silica-synthesis/assets/archive/silica_gee_watersheds_20260706_shapefile_497rows_archived_20260716`
+
+## Current First Pull
 - Active full annual run: `era5_land_annual_full_2000_2025`
 - Shared comparison-window run: `era5_land_annual_overlap_2001_2022`
 - Primary full annual notebook: `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`
@@ -42,6 +49,7 @@ For small watersheds, do not use centroid fallback.
 - McMurdo evaporation and potential evaporation include small negative annual values after the sign conversion, which represent net condensation rather than missing data.
 - McMurdo snow-water equivalent is 10,000 mm for all ten sites and all 26 years and should be reviewed before that variable is used in analysis.
 - The full old-vs-ERA5 comparison includes MODIS evapotranspiration for 2001-2023 and NOAA temperature and GPCP precipitation for 2000-2022.
+- Rerun all 26 annual tasks with the active 530-site asset before treating the ERA5-Land dataset as final.
 
 ## Product Periods
 
