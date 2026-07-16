@@ -1,0 +1,115 @@
+datasets:
+  population:
+    label: LandScan Global ambient population
+    asset_id: projects/sat-io/open-datasets/ORNL/LANDSCAN_GLOBAL
+    asset_type: image_collection
+    temporal_resolution: annual
+    available_start_year: 2000
+    available_end_year: 2024
+    reference_timeframe: annual estimate
+    band: b1
+    year_index_template: landscan-global-{year}
+    selected_spatial_resolution_m: 1000
+    fallback_spatial_resolution_m: 250
+    density_output_name: population_density_people_km2
+    total_output_name: population_total_people
+    coverage_output_name: population_data_coverage_fraction
+    output_columns:
+      - population_density_people_km2
+      - population_total_people
+      - population_data_coverage_fraction
+
+  ghsl_population:
+    label: GHSL residential population
+    asset_id: JRC/GHSL/P2023A/GHS_POP
+    asset_type: image_collection
+    temporal_resolution: five_year
+    # Use the measured five-year dates only. The 2025 and 2030 maps are future
+    # estimates, so they stay out of the default run.
+    available_years: [1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020]
+    reference_timeframe: residential population, observed five-year epoch
+    band: population_count
+    year_index_template: "{year}"
+    selected_spatial_resolution_m: 100
+    fallback_spatial_resolution_m: 30
+    density_output_name: ghsl_population_density_people_km2
+    total_output_name: ghsl_population_total_people
+    coverage_output_name: ghsl_population_data_coverage_fraction
+    output_columns:
+      - ghsl_population_density_people_km2
+      - ghsl_population_total_people
+      - ghsl_population_data_coverage_fraction
+
+  dams:
+    label: Global Dam Watch barriers v1.0
+    asset_id: projects/sat-io/open-datasets/GDW/GDW_BARRIERS_V1_0
+    asset_type: feature_collection
+    temporal_resolution: static
+    reference_timeframe: GDW v1.0 release (2024)
+    capacity_field: CAP_MCM
+    hydropower_field: POWER_MW
+    output_columns:
+      - dam_barrier_count
+      - dam_barrier_density_per_1000_km2
+      - dam_storage_capacity_mcm_total
+      - dam_storage_capacity_records
+      - dam_hydropower_capacity_mw_total
+      - dam_hydropower_capacity_records
+
+  fertilizer:
+    label: NPKGRIDS fertilizer application rates
+    asset_id: projects/sat-io/open-datasets/NPKGRIDS
+    asset_type: image_collection
+    temporal_resolution: static
+    reference_timeframe: circa 2020 (2015-2020 inputs)
+    nutrient_property: nutrient
+    crop_property: crop
+    selected_spatial_resolution_m: 5600
+    fallback_spatial_resolution_m: 1000
+    nutrients:
+      N:
+        band: Nrate
+        output_name: fertilizer_n_crop_rate_sum_index_mean_kg_ha
+        layer_count_name: fertilizer_n_crop_layers
+      P2O5:
+        band: P2O5rate
+        output_name: fertilizer_p2o5_crop_rate_sum_index_mean_kg_ha
+        layer_count_name: fertilizer_p2o5_crop_layers
+      K2O:
+        band: K2Orate
+        output_name: fertilizer_k2o_crop_rate_sum_index_mean_kg_ha
+        layer_count_name: fertilizer_k2o_crop_layers
+    output_columns:
+      - fertilizer_n_crop_rate_sum_index_mean_kg_ha
+      - fertilizer_p2o5_crop_rate_sum_index_mean_kg_ha
+      - fertilizer_k2o_crop_rate_sum_index_mean_kg_ha
+      - fertilizer_n_crop_layers
+      - fertilizer_p2o5_crop_layers
+      - fertilizer_k2o_crop_layers
+
+  wastewater:
+    label: HydroWASTE v1.0 wastewater treatment plants
+    asset_id: projects/sat-io/open-datasets/HydroWaste/HydroWASTE_v10
+    asset_type: feature_collection
+    temporal_resolution: static
+    reference_timeframe: HydroWASTE v1.0 release (2022)
+    status_field: STATUS
+    included_statuses:
+      - Operational
+      - Construction Completed
+      - Not Reported
+    population_served_field: POP_SERVED
+    discharge_field: WASTE_DIS
+    treatment_level_field: LEVEL
+    geometry_basis: Dataset point location (estimated outfall where source linkage is available)
+    output_columns:
+      - wastewater_plant_count
+      - wastewater_plant_density_per_1000_km2
+      - wastewater_population_served_people_total
+      - wastewater_population_served_records
+      - wastewater_discharge_m3_day_total
+      - wastewater_discharge_records
+      - wastewater_primary_treatment_count
+      - wastewater_secondary_treatment_count
+      - wastewater_advanced_treatment_count
+      - wastewater_other_or_unknown_treatment_count
