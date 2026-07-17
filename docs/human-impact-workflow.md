@@ -28,5 +28,5 @@ Files:
 - `config/human-impact-products.yml`: dataset settings and exported fields;
 - `src/gee_spatial/human_impacts.py`: the code that summarizes each watershed.
 
-See [human-impact-notes.md](human-impact-notes.md) for dataset choices, population-product differences,
+See [human-impact-product-reference.md](human-impact-product-reference.md) for dataset definitions, population-product differences,
 and interpretation limits.

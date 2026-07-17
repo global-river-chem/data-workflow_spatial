@@ -1,4 +1,4 @@
-# Current ERA5-Land Notes
+# ERA5-Land Technical Run Reference
 
 This note holds the current run details that used to make the main README too long.
 
@@ -75,8 +75,8 @@ For small watersheds, do not use centroid fallback.
 - Related hourly catalog: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_HOURLY#bands
 - The ERA5 export column list follows the products listed for the run, so added bands are exported instead of dropped.
 
-## Planning Links
+## Related Files
 
-- Scaling/task-count notes: `docs/gee-full-run-plan.md`
+- Scaling and task-count reference: `docs/gee-extraction-scaling.md`
 - Active run config: `config/run-list.yml`
 - Product config: `config/driver-products.yml`

@@ -1,7 +1,7 @@
-# Human-Impact Dataset Notes
+# Human-Impact Product Reference
 
-This is where we keep the dataset decisions and how to interpret the results.
-You do not need it to run the notebook.
+This file documents product definitions and interpretation limits. It is not
+required to run the notebook.
 
 ## Population
 

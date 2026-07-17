@@ -1,4 +1,4 @@
-# GEE Full Run Plan
+# GEE Extraction Scaling Reference
 
 This note is for scaling the current Earth Engine pilot to all current watershed rows for the annual ERA5-Land workflow.
 
