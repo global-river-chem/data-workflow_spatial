@@ -2,6 +2,8 @@ earth_engine:
   project: silica-synthesis
 
 watersheds:
+  # Historical 530-row asset only; not valid for a final run. See
+  # docs/era5-land-run-reference.md for the required 529-row replacement.
   asset_id: projects/silica-synthesis/assets/silica_gee_watersheds_530sites_20260715
   id_column: site_id
   run_group_column: run_group
