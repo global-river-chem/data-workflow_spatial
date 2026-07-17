@@ -2,23 +2,15 @@
 
 Google Earth Engine spatial extraction workflow for the global river chemistry project.
 
-## Useful Files
+## Start Here
 
-- `data-workflow_spatial.Rproj`: open this in RStudio for local work.
-- `colab_notebooks/full_era5_land_annual_2000_2025.ipynb`: full annual ERA5-Land Colab notebook.
-- `colab_notebooks/fallback_configured_gee_exports.ipynb`: config-driven fallback Colab notebook.
-- `colab_notebooks/test_watershed_size_comparison_era5_land.ipynb`: small, medium, and large watershed comparison Colab notebook.
-- `colab_notebooks/test_and_tiny_watersheds_era5_land.ipynb`: Andrews/tiny-watershed test Colab notebook.
-- `colab_notebooks/run_human_impacts.ipynb`: global human-impact Colab notebook.
-- `config/human-impact-products.yml`: human-impact dataset settings and output fields.
-- `workflow/run_watershed_size_comparison_qa.R`: local R script for old-vs-GEE watershed-size QA.
-- `workflow/check_full_annual_era5_land.R`: checks the complete annual ERA5-Land dataset and writes QA tables and plots to the [shared GEE output folder](https://drive.google.com/drive/folders/1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX?usp=share_link).
-- `workflow/compare_full_annual_era5_land_to_old_drivers.R`: compares the complete ERA5-Land dataset with the previous annual spatial drivers.
-- `workflow/build_annual_inventory.R`: local R script for building annual inventory tables from completed exports.
-- `docs/era5-land-run-reference.md`: technical ERA5-Land run record.
-- `docs/gee-extraction-scaling.md`: extraction scaling and task reference.
-- `docs/human-impact-workflow.md`: human-impact run instructions.
-- `docs/human-impact-product-reference.md`: human-impact product interpretation.
+- [Full annual ERA5-Land notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/full_era5_land_annual_2000_2025.ipynb)
+- [Human-impact notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/run_human_impacts.ipynb)
+- [Earth Engine assets and export settings](config/gee-assets.yml)
+- [Driver-product settings](config/driver-products.yml)
+- [Human-impact product settings](config/human-impact-products.yml)
+
+Technical references are in [`docs/`](docs/). Local QA and file-organization scripts are in [`workflow/`](workflow/).
 
 ## References To Revisit
 
