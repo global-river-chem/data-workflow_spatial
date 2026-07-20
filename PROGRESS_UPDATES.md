@@ -18,34 +18,33 @@ This file records material changes to the spatial data after the March 25, 2025 
 | Date | File or package | Site accounting | Material change |
 |---|---|---:|---|
 | 2025-03-25 | `all-data_si-extract_2_20250325.csv` | 570 rows; 497 unique normalized LTER/stream names; 367 columns | Baseline used for this change log. The file is retained with the archived GRL submission inputs. |
-| 2026-06-29 | `all-data_si-extract_3_20260629.csv` | 543 unique site rows; 401 columns | Consolidated May-June reruns and new site records. Seventy row identifiers were not in the March baseline after matching both stream and discharge identifiers. March duplicate and alias rows were collapsed. |
+| 2026-06-29 | `all-data_si-extract_3_20260629.csv` | 543 unique sites; 401 columns | Combined the May-June reruns and new sites. Seventy site names were not in the March file after matching both stream and discharge names. Repeated names for the same March site were combined. |
 | 2026-07-14 | `all-data_si-extract_3_20260629_with_coast_distance.csv` | 543 | Added distance-to-coast values; no site rows were added. |
 | 2026-07-16 | `all-data_si-extract_3_20260716.csv` | 543 | Added targeted AppEEARS results for Andrews Creek, Serrinha, KRR S65B, and DMF Brazos River; no site rows were added. |
 | 2026-07-17 | `all-data_si-extract_3_20260717.csv` | 543 | Filled ET and snow gaps for 22 sites; no site rows were added. |
-| 2026-07-18 | `all-data_si-extract_3_20260718_unfiltered_intermediate.csv` | 548 | Added five newly recovered watershed sites and their AppEEARS results. |
-| 2026-07-19 | `all-data_si-extract_3_20260719.csv` | 524 | Restricted the final all-spatial file to sites with accepted watershed geometry. Twenty-four rows without an accepted watershed were removed. |
+| 2026-07-18 | `all-data_si-extract_3_20260718_unfiltered_intermediate.csv` | 548 | Added five sites after finding reliable watershed files and completing their AppEEARS extractions. |
+| 2026-07-19 | `all-data_si-extract_3_20260719.csv` | 524 | Removed 24 sites that did not have a reliable watershed. |
 | 2026-07-20 | `appeears_spatial-extract_524sites_20260720.csv` | 524 | Ran the usual snow and permafrost checks for the five recently added sites. Fitzroy Crossing snow was set to zero, and missing permafrost values were set to zero for Fitzroy Crossing and the four new LMP sites. |
 
-## 2026-05-08 to 2026-05-24: HydroSHEDS review and May additions
+## May 8-24, 2026: reviewed watersheds and added sites
 
-- Standardized HydroSHEDS upstream-ID handling and retained HydroSHEDS sites in targeted rerun planning.
-- The May 14 review approved full-record HydroSHEDS work for Cameroon Mbalmayo, Messam, Olama, and Pont So'o, plus newer-year updates for six Canada sites and nine Murray-Darling sites. Sites not meeting the watershed-size or downstream-use rules were held.
-- The May 23 land-cover pull covered 48 identifiers. Forty-seven names were absent from the March file; Yampa River Below Craig was an existing site included in the pull.
-- The May additions used already supplied project watershed files, reprojected copies of those files, or accepted HydroSHEDS geometry. They included:
-  - Amazon: Amazon River at Itapeua, Manacapuru, Santo Antonio do Ica, and Vargem Grande; Rio Ica, Japura, Jurua, Jutai, Madeira, Negro, and Purus. These use Glorich watershed files retained under `silica-shapefiles/reprojected/`.
-  - ColoradoAlpine: Loch. Its accepted source was later documented as the Loch Vale Watershed Study file `lvws_basin`.
-  - Congo Basin: Mbalmayo, Messam, Olama, and Pont So'o. These use the supplied Nyong, Awout, and Soo watershed files retained under `silica-shapefiles/reprojected/`.
-  - EastRiverSFA: `ce_cmt0`, `coal_11`, `er_brd1`, `er_cpr1`, `er_eaq1`, `er_ebc1`, `er_phf0`, `er_rck1`, `er_rus1`, `lo_loc1`, `sg_suf1`, and `tr_tcg1`. These use project-supplied watershed files retained under `silica-shapefiles/artisanal-shapefiles-2/`.
-  - Guadeloupe: Capesterre, La Digue; Maison de la Forêt; Petit Bras-David; Ravine Quiock; Vieux-Habitants, Barthole; and Vieux-Habitants, Savanne-Beauséjour. These use supplied BD CARTHAGE watershed-zone files.
-  - MD: Barham and Jingellic, using `AUS_409005` and `AUS_401201`.
-  - NWT: `como`, using the existing Como Creek polygon. This is an alias of NWT Como Creek, not a new physical watershed.
-  - Seine: Amfreville-sous-les-Monts, Bennecourt, Carrieres-sous-Poissy, Ivry-sur-Seine, Paris-12e--Arrondissement, Poses 3, and Triel-sur-Seine, using project-supplied watershed files.
-  - USGS: Arkansas River at Murray Dam, Columbia River at Port Westward, and North Sylamore. North Sylamore was later replaced with a site-specific NLDI whole-basin polygon.
-- EastRiverSFA `coal_11` is the same physical site and geometry as the older Coal Creek row. Both identifiers remain in the current 524-row product and must not be interpreted as two independent watersheds.
+- Reviewed the sites that might be able to use HydroSHEDS and kept only the ones with a watershed we could defend. The May 14 review approved full AppEEARS coverage for Cameroon Mbalmayo, Messam, Olama, and Pont So'o, along with the missing recent years for six Canadian sites and nine Murray-Darling sites.
+- The May 23 land-cover extraction included 48 site names. Forty-seven were additions to the March file; Yampa River Below Craig was already present and was included because it needed an update.
+- The sites added in May came from the following watershed sources:
+  - Amazon: 11 GLORICH watershed files for Amazon River at Itapeua, Manacapuru, Santo Antonio do Ica, and Vargem Grande, plus Rio Ica, Japura, Jurua, Jutai, Madeira, Negro, and Purus.
+  - ColoradoAlpine: Loch, using the Loch Vale Watershed Study file `lvws_basin`.
+  - Cameroon: Mbalmayo, Messam, Olama, and Pont So'o, using the supplied Nyong, Awout, and Soo watershed files. These files were later corrected because their original map projection had been read incorrectly.
+  - EastRiverSFA: 12 project-supplied watershed files: `ce_cmt0`, `coal_11`, `er_brd1`, `er_cpr1`, `er_eaq1`, `er_ebc1`, `er_phf0`, `er_rck1`, `er_rus1`, `lo_loc1`, `sg_suf1`, and `tr_tcg1`.
+  - Guadeloupe: six BD CARTHAGE watersheds for Capesterre, La Digue; Maison de la Forêt; Petit Bras-David; Ravine Quiock; Vieux-Habitants, Barthole; and Vieux-Habitants, Savanne-Beauséjour.
+  - Murray-Darling: Barham and Jingellic, using the official Australian files `AUS_409005` and `AUS_401201`.
+  - NWT: `como`, using the existing Como Creek watershed. These are two names for the same site, not two different watersheds.
+  - Seine: seven project-supplied watersheds for Amfreville-sous-les-Monts, Bennecourt, Carrieres-sous-Poissy, Ivry-sur-Seine, Paris-12e--Arrondissement, Poses 3, and Triel-sur-Seine.
+  - USGS: Arkansas River at Murray Dam, Columbia River at Port Westward, and North Sylamore. North Sylamore was later replaced with a watershed downloaded from USGS NLDI specifically for that gauge.
+- EastRiverSFA `coal_11` is also the same site and watershed as the older Coal Creek row. Both names are still present in the 524-site file, but they should not be treated as two independent watersheds.
 
-## By 2026-06-29: remaining rows added after March
+## By June 29, 2026: other sites added after March
 
-The June 29 file also contained 23 row identifiers not represented in the May 23 land-cover pull:
+The June 29 file contained 23 more site names that were not part of the May 23 land-cover extraction:
 
 - ARC: Imnavait Upper, Imnavait WT 07 Weir, Toolik Inlet, and TW Weir.
 - ColoradoAlpine: Andrews Creek.
@@ -58,27 +57,27 @@ The June 29 file also contained 23 row identifiers not represented in the May 23
 - MCM: Andersen Creek at H1, Lawson Creek at B3, Onyx River at Lake Vanda Weir, Onyx River at Lower Wright Weir, and Priscu Stream at B1.
 - USGS: DMF Brazos River.
 
-Several of these were row additions before a defensible watershed had been found. ARC, the Nsimi sites, HYBAM Obidos, LUQ QP, the five MCM sites, and KRR S65B were later removed from the final all-spatial file. The accepted geometry recoveries are listed below.
+Several were added to the table before we had found a reliable watershed for them. ARC, the Nsimi sites, HYBAM Obidos, LUQ QP, the five MCM sites, and KRR S65B were later removed from the final spatial file. The sites for which we did find reliable watersheds are listed below.
 
-## 2026-07-15: recovered and documented polygons
+## July 15, 2026: new watershed files found and documented
 
-| Site | Living-table `Shapefile_Name` | Accepted source | HydroSHEDS? | Final status |
+| Site | Living-table `Shapefile_Name` | Where the watershed came from | HydroSHEDS? | Used in final file? |
 |---|---|---|---|---|
-| ColoradoAlpine — Andrews Creek | `andrews_nldi` | USGS NLDI whole-basin polygon | No | Retained |
-| ColoradoAlpine — Loch | `lvws_basin` | Loch Vale Watershed Study spatial data | No | Retained |
-| HYBAM — Labrea | `labrea_hydrosheds` | HydroBASINS v1c upstream union; outlet `6120400480` | Yes | Retained |
-| HYBAM — Serrinha | `serrinha_hydrosheds` | HydroBASINS v1c upstream union; outlet `6120218550` | Yes | Retained |
-| HYBAM — Tabatinga | `tabatinga_hydrosheds` | HydroBASINS v1c upstream union; outlet `6120313630` | Yes | Retained |
-| LMP — NOR27 | `nor27_nldi` | USGS NLDI whole-basin polygon | No | Retained |
-| USGS — DMF Brazos River | `dmf_brazos_river_gagesii` | USGS GAGES-II basin for gage 08079600 | No | Retained |
-| USGS — North Sylamore | `north_sylamore_nldi` | USGS NLDI whole-basin polygon | No | Retained |
+| ColoradoAlpine — Andrews Creek | `andrews_nldi` | USGS NLDI watershed for the gauge | No | Yes |
+| ColoradoAlpine — Loch | `lvws_basin` | Loch Vale Watershed Study spatial data | No | Yes |
+| HYBAM — Labrea | `labrea_hydrosheds` | Combined upstream HydroBASINS watershed; outlet `6120400480` | Yes | Yes |
+| HYBAM — Serrinha | `serrinha_hydrosheds` | Combined upstream HydroBASINS watershed; outlet `6120218550` | Yes | Yes |
+| HYBAM — Tabatinga | `tabatinga_hydrosheds` | Combined upstream HydroBASINS watershed; outlet `6120313630` | Yes | Yes |
+| LMP — NOR27 | `nor27_nldi` | USGS NLDI watershed for the gauge | No | Yes |
+| USGS — DMF Brazos River | `dmf_brazos_river_gagesii` | USGS GAGES-II watershed for gauge 08079600 | No | Yes |
+| USGS — North Sylamore | `north_sylamore_nldi` | USGS NLDI watershed for the gauge | No | Yes |
 
-The targeted AppEEARS work used the corrected polygons for Andrews Creek, Serrinha, and DMF Brazos River. KRR S65B was also run at this stage but was later removed because `s_65bc` is a combined S-65BC management area, not a unique S65B watershed.
+AppEEARS was rerun with the corrected watersheds for Andrews Creek, Serrinha, and DMF Brazos River. KRR S65B was also run, but it was later removed because `s_65bc` covers the combined S-65BC management area rather than a watershed unique to S65B.
 
-## 2026-07-16 to 2026-07-17: corrected geometry and driver backfills
+## July 16-17, 2026: fixed watersheds and filled missing AppEEARS data
 
-- Fazenda Vista Alegre was corrected from the wrong `rio_madeira` polygon to `fazenda_vista_alegre_hydrosheds`, a HydroBASINS v1c upstream union with outlet `6120330250`. Polygon area is 1,314,827.1 km² versus 1,317,760 km² in the reference table, a -0.223% difference.
-- KRR `s_65bc` is a supplied SFWMD combined management-basin polygon. The current final product retains it once under S65C and removes S65B. This does not establish a unique S65C watershed; it avoids using the same combined area twice.
+- Fazenda Vista Alegre had been assigned the wrong `rio_madeira` watershed. It was replaced with `fazenda_vista_alegre_hydrosheds`, the combined upstream HydroBASINS watershed at outlet `6120330250`. Its mapped area is 1,314,827.1 km², compared with 1,317,760 km² in the reference table, a difference of -0.223%.
+- The supplied KRR file `s_65bc` covers the combined S-65BC management area. The final spatial file keeps it once under S65C and removes S65B so the same area is not counted twice. It should not be described as a watershed unique to S65C.
 - AppEEARS ET and snow corrections filled or replaced 125 cells for 22 sites:
   - Six Guadeloupe sites: Capesterre, La Digue; Maison de la Forêt; Petit Bras-David; Ravine Quiock; Vieux-Habitants, Barthole; Vieux-Habitants, Savanne-Beauséjour.
   - LUQ RES4.
@@ -90,7 +89,7 @@ The targeted AppEEARS work used the corrected polygons for Andrews Creek, Serrin
   - USGS Hillabahatchie Creek/FRAN for 2021 snow.
 - After this update, all 22 corrected sites had complete ET, NPP, cycle-0 green-up, snow-day, and maximum snow-area fields for 2002-2022.
 
-## 2026-07-17 to 2026-07-19: five newly accepted sites
+## July 17-19, 2026: five more sites added
 
 | Site | Living-table `Shapefile_Name` | Source and check | HydroSHEDS? |
 |---|---|---|---|
@@ -100,21 +99,21 @@ The targeted AppEEARS work used the corrected polygons for Andrews Creek, Serrin
 | LMP — RMB04 | `rmb04_nldi` | USGS NLDI COMID 5848152; 4.913 km² versus 4.9 km² reference | No |
 | WesternAustralia — Fitzroy River — Fitzroy Crossing | `fitzroy_river_fitzroy_crossing_bom_geofabric` | Bureau of Meteorology Geofabric V3.3 station catchment for gauge 802055; 45,627.002 km² | No |
 
-- All five polygons contain their outlet, are valid, and are not exact duplicates of an accepted geometry.
+- Each watershed contains its gauge or outlet, passed the geometry checks, and is different from the other watersheds in the final file.
 - Fitzroy Crossing must use the official gauge coordinate: longitude 125.5783, latitude -18.20972.
-- The five source bundles and their source README are retained in `silica-shapefiles/recovered-20260717/`.
-- The five AppEEARS requests were downloaded, extracted, combined, and included in the July 18 intermediate.
+- The five watershed files and their README are stored in `silica-shapefiles/recovered-20260717/`.
+- Their AppEEARS results were downloaded, extracted, combined, and added to the July 18 working file.
 
-## 2026-07-19: final geometry filter
+## July 19, 2026: removed sites without a reliable watershed
 
-The 548-row intermediate was reduced to 524 sites by removing rows without an accepted watershed:
+The 548-site working file was reduced to 524 sites. The following rows were removed because they did not have a reliable watershed:
 
 - Four ARC sites: Imnavait Upper, Imnavait WT 07 Weir, Toolik Inlet, and TW Weir.
 - Congo Basin Nsimi Outlet and Nsimi Spring.
-- HYBAM Obidos; GRO Obidos is the retained cross-network Obidos row.
-- KRR S65B; S65C is the single retained representative of the combined `s_65bc` management area.
+- HYBAM Obidos; the GRO Obidos row is the one kept in the final file.
+- KRR S65B; S65C is the one row kept for the combined `s_65bc` management area.
 - LUQ QP; its NLDI candidate was 3.32 km² versus the 0.31 km² reference area and was rejected.
-- All 15 MCM rows. Ten had stream-channel polygons rather than watershed polygons, and five had no accepted watershed. No MCM row remains in the final product.
+- All 15 MCM rows. Ten had stream-channel shapes rather than watersheds, and five had no usable watershed. No MCM rows remain in the final spatial file.
 
 The following duplicated sites or shared watershed areas are documented and
 should not be treated as independent watersheds: NWT Como/Como Creek, Seine
@@ -143,10 +142,10 @@ and Sidney will review these cases at the July 21 data check-in.
   (2002, 2003, 2004, 2007, 2011, 2012, and 2021), Catalina Jemez OR_low
   (2002), and Andrews Creek (2003, 2008, and 2012). These years were rerun;
   MODIS did not return usable values. Cycle 1 is optional.
-- Ravine Quiock's accepted BD CARTHAGE polygon is 9.76 km² while the reference table says 0.78 km². A square-mile conversion does not resolve the discrepancy: 0.78 mi² is about 2.02 km². The reference drainage area needs review.
+- Ravine Quiock's BD CARTHAGE watershed is 9.76 km² while the reference table says 0.78 km². A square-mile conversion does not explain the difference: 0.78 mi² is about 2.02 km². The reference drainage area still needs to be checked.
 - Fitzroy Crossing's repeated snow values were an extraction error. They are
-  now zero in the accepted file.
-- ERA5-Land exports for the 524-site asset are complete. The non-GHSL human-impact exports are complete. GHSL is being rerun in smaller Earth Engine jobs after the full 524-site request exceeded memory.
+  now zero in the final file.
+- ERA5-Land exports for all 524 watersheds are complete. The human-impact exports other than GHSL are also complete. GHSL is being rerun in smaller Earth Engine jobs because the single 524-site job was too large.
 
 ## 2026-07-20: Site Reference Table revisions
 
@@ -213,7 +212,7 @@ and Sidney will review these cases at the July 21 data check-in.
   current 137.4543 km2 value as confirmed.
 - The three Yzeron sites do not meet the current WRTDS-or-five-years rule, so
   their coordinate fixes do not add them to the AppEEARS list.
-- Eleven drainage-area values had material corrections:
+- Eleven drainage-area values were actually wrong and were corrected:
 
 | Site | Previous km2 | Corrected km2 |
 |---|---:|---:|
@@ -232,12 +231,11 @@ and Sidney will review these cases at the July 21 data check-in.
 - Filled six previously blank drainage-area cells: LUQ RES4, 22.3257 km2;
   both PIE Ipswich-at-Ipswich rows, 323.7485 km2; PIE Parker and Parker River
   at Byfield, 55.1668 km2; and Fitzroy Crossing, 45,627.0015 km2.
-- Standardized numerical precision for 65 other existing drainage-area values.
-  These were formatting or added-decimal updates, not material watershed-area
-  changes.
-- One regression remains in the July 20 table download: HYBAM Serrinha's
-  drainage area was cleared. Restore 286,851.9 km2, sourced from the accepted
-  HydroBASINS watershed at outlet 6120218550.
+- Updated the number of decimal places shown for 65 other drainage-area
+  values. Their watershed areas did not change.
+- HYBAM Serrinha's drainage area was accidentally cleared in the July 20
+  table download. Restore 286,851.9 km2, based on the HydroBASINS watershed
+  at outlet 6120218550.
 
 ### Moving-water check
 
@@ -246,7 +244,7 @@ and Sidney will review these cases at the July 21 data check-in.
   falls outside this rule and does not meet the chemistry requirement.
 - Keep river or stream sites whose names mention a lake only because the gauge
   is at an inlet, outlet, or weir. They still need a real watershed before use.
-- `Nsimi_outlet` is a stream outlet and remains eligible. Enter 0.60 km2 as
+- `Nsimi_outlet` is a stream outlet and still meets the project rules. Enter 0.60 km2 as
   its drainage area, based on the [M-TROPICS Nsimi
   record](https://hplus.ore.fr/en/nsimi/), but leave its shapefile fields blank.
   The downloadable DEIMS boundary covers the broader monitoring area, not the
@@ -283,9 +281,9 @@ watershed` and `Shapefile_CRS_EPSG` with `4326` where those cells are blank.
 Do not rename the four Murray-Darling rows that use official Australian gauge
 catchments instead of HydroSHEDS: Merbein, Euston Weir, Barham, and Jingellic.
 
-## 2026-07-20: final AppEEARS follow-up preparation
+## July 20, 2026: final AppEEARS sites
 
-- The full 980-row table was checked before preparing the last request. Sites
+- All 980 rows were checked before preparing the last request. Sites
   without a trustworthy watershed were not submitted.
 - Twelve sites are ready: four corrected existing Cameroon sites, six new
   Finnish sites, and two new Western Australia sites.
@@ -305,8 +303,8 @@ catchments instead of HydroSHEDS: Merbein, Euston Weir, Barham, and Jingellic.
 | Western Australia — Thomson Brook — Woodperry Homestead | `thomson_brook_woodperry_homestead_bom_geofabric` | Bureau of Meteorology Geofabric V3.3 | 611111 | 102.05 |
 | Western Australia — Yarragil Brook — Yarragil Formation | `yarragil_brook_yarragil_formation_bom_geofabric` | Bureau of Meteorology Geofabric V3.3 | 614044 | 72.98 |
 
-- All twelve polygons are valid, contain the relevant gauge or outlet, and are
-  not copies of a current watershed. Thomson Brook differs from the official
+- All 12 watersheds passed the geometry checks, contain the relevant gauge or outlet, and are
+  different from the watersheds already in the final file. Thomson Brook differs from the official
   gauge area by -3.79%; Yarragil Brook differs by +2.24%.
 - The other ten Western Australia sites remain on hold because their mapped
   areas did not agree closely enough with the official gauge areas, or the
@@ -316,8 +314,8 @@ catchments instead of HydroSHEDS: Merbein, Euston Weir, Barham, and Jingellic.
 ## 2026-07-20: Box cleanup
 
 - Copied the corrected July 20 extract, its check and change logs, coverage tables, and AppEEARS QA plots to `spatial-data-files/appeears-nasa/`.
-- Removed 3,193 unreferenced files from `artisanal-shapefiles-2/`, retaining all sidecars for the 27 shapefiles referenced directly by the accepted watershed package.
+- Removed 3,193 unused files from `artisanal-shapefiles-2/`. Kept the 27 watershed shapefiles used by the final file, along with their required `.dbf`, `.shx`, and `.prj` files.
 - Removed rejected July 15 candidate folders, the MCM channel-polygon archive, 17 unreferenced reprojection folders, the superseded 120 MB `silica-watersheds` package, and the replaced July 19 wide CSV.
 - Retained the current combined watershed source, all accepted recovered-site bundles, and the source README for the five July 17 recoveries.
-- The watershed-source area decreased from 416 MB to 129 MB. Post-cleanup validation found 524 valid, nonempty geometries, 524 unique site IDs, all 62 source shapefiles present, and all 248 required shapefile sidecars present.
+- The watershed folder decreased from 416 MB to 129 MB. After cleanup, the final watershed file still contained 524 valid watersheds and 524 unique site IDs. All 62 source shapefiles and their 248 required companion files were present.
 - No Google Drive upload was performed.
