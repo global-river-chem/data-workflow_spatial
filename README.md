@@ -4,6 +4,7 @@ Google Earth Engine spatial extraction workflow for the global river chemistry p
 
 ## Start Here
 
+- [Spatial-data progress updates](PROGRESS_UPDATES.md)
 - [Full annual ERA5-Land notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/full_era5_land_annual_2000_2025.ipynb)
 - [ERA5-Land run status and QA](docs/era5-land-run-reference.md)
 - [Human-impact notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/run_human_impacts.ipynb)
