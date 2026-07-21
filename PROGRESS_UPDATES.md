@@ -22,11 +22,11 @@ This file records material changes to the spatial data after the March 25, 2025 
 - Coverage for 2002-2022 is complete for 521 of the 524 sites. The remaining
   cycle-0 green-up gaps stayed missing after reruns because MODIS did not
   return usable data for those site-years. Cycle 1 is optional.
-- One final 12-site request set has been prepared and checked: four corrected
+- The final 12-site request set was submitted on July 20: four corrected
   Cameroon watersheds, six Finnish watersheds, and Thomson Brook and Yarragil
-  Brook in Western Australia. These requests have not been submitted yet.
-- Next: submit and monitor all 12 requests, then download, combine, and check
-  the results.
+  Brook in Western Australia. AppEEARS accepted all 12 requests; two began
+  processing immediately and ten were pending.
+- Next: monitor the 12 requests, then download, combine, and check the results.
 
 ## Dataset checkpoints
 
@@ -324,7 +324,9 @@ catchments instead of HydroSHEDS: Merbein, Euston Weir, Barham, and Jingellic.
 - The other ten Western Australia sites remain on hold because their mapped
   areas did not agree closely enough with the official gauge areas, or the
   Geofabric river link was missing.
-- No final follow-up request had been submitted at the time of this update.
+- All 12 requests were submitted and accepted by AppEEARS on July 20. The
+  submission record contains 12 unique task IDs with no remaining duplicate
+  tasks.
 
 ## 2026-07-20: Box cleanup
 
