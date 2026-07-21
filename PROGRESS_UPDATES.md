@@ -13,6 +13,21 @@ This file records material changes to the spatial data after the March 25, 2025 
   - `spatial-data-files/harmonization-variables/`
   - `silica-shapefiles/`
 
+## Current AppEEARS status
+
+- The targeted ET and snow updates are complete, downloaded, combined, and
+  checked. They filled missing values for 22 sites.
+- Four new LMP sites and Fitzroy Crossing were added after reliable watershed
+  files were found and their AppEEARS extractions were completed.
+- Coverage for 2002-2022 is complete for 521 of the 524 sites. The remaining
+  cycle-0 green-up gaps stayed missing after reruns because MODIS did not
+  return usable data for those site-years. Cycle 1 is optional.
+- One final 12-site request set has been prepared and checked: four corrected
+  Cameroon watersheds, six Finnish watersheds, and Thomson Brook and Yarragil
+  Brook in Western Australia. These requests have not been submitted yet.
+- Next: submit and monitor all 12 requests, then download, combine, and check
+  the results.
+
 ## Dataset checkpoints
 
 | Date | File or package | Site accounting | Material change |
