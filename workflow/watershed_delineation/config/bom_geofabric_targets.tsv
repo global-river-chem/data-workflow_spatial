@@ -1,0 +1,4 @@
+LTER	Stream_Name	station_number	Shapefile_Name	extraction_method
+MD	Euston Weir	414209	AUS_414209	contracted_catchment
+MD	Merbein	414206	AUS_414206	contracted_catchment
+WesternAustralia	Fitzroy River - Fitzroy Crossing	802055	fitzroy_crossing_bom	station_catchment

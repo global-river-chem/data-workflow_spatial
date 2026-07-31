@@ -1,0 +1,7 @@
+LTER	Stream_Name	Shapefile_Name	taso2_id	Latitude	Longitude	reference_area_km2
+Finnish Environmental Institute	Kisko 14 Vanhak va6111	kiskonjoen_pernionjoen_vesistoalue	124	60.13327	23.15425	1047
+Finnish Environmental Institute	Uske 16 Salon yp va6101	uskelanjoen_vesistoalue	125	60.39136	23.13160	566
+Finnish Environmental Institute	Pajo 44 Isosilta va6301	paimionjoen_vesistoalue	127	60.46194	22.67675	NA
+Finnish Environmental Institute	Aura 54 ohikulku va6401	aurajoen_vesistoalue	128	60.47652	22.36151	874
+Finnish Environmental Institute	Eura 42 Pori-Rma va6900	eurajoen_vesistoalue	134	61.20149	21.72593	1336
+Finnish Environmental Institute	Kojo 35 Pori-Tre	kokemaenjoen_vesistoalue	135	61.45623	21.87079	NA

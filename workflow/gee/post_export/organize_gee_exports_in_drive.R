@@ -2,11 +2,7 @@ suppressPackageStartupMessages({
   library(googledrive)
 })
 
-args <- get0(
-  "GEE_EXPORT_ORGANIZE_ARGS",
-  ifnotfound = commandArgs(trailingOnly = TRUE),
-  inherits = TRUE
-)
+args <- commandArgs(trailingOnly = TRUE)
 
 get_arg <- function(flag, default = "") {
   hit <- which(args == flag)
@@ -82,11 +78,22 @@ start_year <- as.integer(get_arg("--start-year", "2001"))
 end_year <- as.integer(get_arg("--end-year", "2023"))
 years <- parse_years(get_arg("--years", ""))
 years_to_skip <- parse_years(get_arg("--years-to-skip", ""))
-drive_export_folder_id <- get_arg("--drive-export-folder-id", "1Y4Hz9_vZsar61jjhYOrQXG4AR1oQWNAX")
+drive_export_folder_id <- get_arg(
+  "--drive-export-folder-id",
+  Sys.getenv("SILICA_GEE_DRIVE_EXPORT_FOLDER_ID", unset = "")
+)
 drive_run_folder <- get_arg("--drive-run-folder", "")
 drive_account <- get_arg("--drive-account", "")
 search_all_drive <- parse_bool_arg("--search-all-drive", TRUE)
 fail_on_missing <- parse_bool_arg("--fail-on-missing", FALSE)
+
+if (!nzchar(drive_export_folder_id)) {
+  stop(
+    "Pass --drive-export-folder-id or set ",
+    "SILICA_GEE_DRIVE_EXPORT_FOLDER_ID.",
+    call. = FALSE
+  )
+}
 
 if (!length(years)) {
   if (is.na(start_year) || is.na(end_year) || start_year > end_year) {

@@ -1,24 +1,28 @@
-# Data Workflow: Spatial
+# Spatial Data Workflow
 
-Google Earth Engine spatial extraction workflow for the global river chemistry project.
+This repository contains the Earth Engine, watershed, harmonization, and final
+spatial-data assembly used by the global river chemistry project. AppEEARS
+requests and local MODIS work stay in `lterwg-silica-spatial`.
 
-## Start Here
+## Main entry points
 
-- [Spatial-data progress updates](PROGRESS_UPDATES.md)
-- [Full annual ERA5-Land notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/full_era5_land_annual_2000_2025.ipynb)
-- [ERA5-Land run status and QA](docs/era5-land-run-reference.md)
-- [Human-impact notebook](https://colab.research.google.com/github/global-river-chem/data-workflow_spatial/blob/main/colab_notebooks/run_human_impacts.ipynb)
-- [Human-impact workflow](docs/human-impact-workflow.md)
-- [Earth Engine assets and export settings](config/gee-assets.yml)
-- [Driver-product settings](config/driver-products.yml)
-- [Human-impact product settings](config/human-impact-products.yml)
+- `workflow/build_watershed_collection.R` builds the current watershed layer
+  from the finalized site table and exact spatial-data version folders.
+- `workflow/watershed_delineation/` contains reusable source-specific
+  delineation tools. Site-specific outlet or source IDs live in small TSV
+  files under its `config/` folder.
+- `workflow/gee/` contains the safe ERA5-Land, human-impact, and GLC-FCS30D
+  workflows.
+- `workflow/build_updated_watershed_asset.py` merges checked additions into an
+  existing Earth Engine watershed asset without hard-coded row counts.
 
-Local QA and file-organization scripts are in [`workflow/`](workflow/).
+Progress notes are kept in [PROGRESS_UPDATES.md](PROGRESS_UPDATES.md). Product
+and asset settings are under `config/`; generated exports and temporary files
+do not belong in Git.
 
-## Repo Layout
+## Final coverage checks
 
-- `colab_notebooks/`: Colab notebooks for GEE extraction tests and full runs.
-- `workflow/`: local R scripts for watershed inputs, Drive organization, QA, run estimates, and inventory tables.
-- `src/gee_spatial/`: Python helpers used by the Colab GEE extraction notebooks.
-- `config/`: Earth Engine assets, product settings, and run settings.
-- `docs/`: concise technical run and product references.
+The final annual file is checked against every spatial site and every available
+driver year from 2002–2025. GLC-FCS30D ends in 2022 and is not extended into
+later years. Coverage reports keep source limits separate from extraction
+failures.

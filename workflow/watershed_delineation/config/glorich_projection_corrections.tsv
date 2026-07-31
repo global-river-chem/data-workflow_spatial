@@ -1,0 +1,4 @@
+LTER	Stream_Name	Shapefile_Name	source_dir	Latitude	Longitude	reference_area_km2	misassigned_crs	source_crs
+Cameroon	Mbalmayo	nyong_mbalmayo	nyong-mbalmayo	3.51	11.50	14381.3061	32632	ESRI:54012
+Cameroon	Olama	nyong_olama	nyong-olama	3.43	11.28	19204.0080	32632	ESRI:54012
+Cameroon	Messam	awout_messam	awout-messam	3.28	11.78	194.6099	32632	ESRI:54012

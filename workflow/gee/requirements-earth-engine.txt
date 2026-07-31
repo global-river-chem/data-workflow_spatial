@@ -1,0 +1,2 @@
+# Verified current stable release on 2026-07-28.
+earthengine-api==1.7.35

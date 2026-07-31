@@ -434,8 +434,18 @@ def _non_null_count(collection, field: str):
     return collection.filter(ee.Filter.notNull([field])).size()
 
 
+def _valid_nonnegative_records(collection, field: str):
+    """Keep reported nonnegative values and drop GDW numeric sentinels."""
+
+    import ee
+
+    return collection.filter(ee.Filter.notNull([field])).filter(
+        ee.Filter.gte(field, 0)
+    )
+
+
 def extract_dams(config: Dict[str, Any], watersheds):
-    """Count Global Dam Watch barriers and add their reported capacities."""
+    """Count barriers and add valid Global Dam Watch capacity values."""
 
     import ee
 
@@ -447,6 +457,8 @@ def extract_dams(config: Dict[str, Any], watersheds):
     def summarize_feature(feature):
         area_km2 = ee.Number(polygon_area_km2_value(feature))
         inside = barriers.filterBounds(feature.geometry())
+        valid_capacity = _valid_nonnegative_records(inside, capacity_field)
+        valid_power = _valid_nonnegative_records(inside, power_field)
         count = inside.size()
         properties = _base_properties(feature, "dams", dataset)
         properties.update(
@@ -456,17 +468,13 @@ def extract_dams(config: Dict[str, Any], watersheds):
                 .multiply(1000)
                 .divide(area_km2),
                 "dam_storage_capacity_mcm_total": _aggregate_sum_or_zero(
-                    inside, capacity_field
+                    valid_capacity, capacity_field
                 ),
-                "dam_storage_capacity_records": _non_null_count(
-                    inside, capacity_field
-                ),
+                "dam_storage_capacity_records": valid_capacity.size(),
                 "dam_hydropower_capacity_mw_total": _aggregate_sum_or_zero(
-                    inside, power_field
+                    valid_power, power_field
                 ),
-                "dam_hydropower_capacity_records": _non_null_count(
-                    inside, power_field
-                ),
+                "dam_hydropower_capacity_records": valid_power.size(),
                 "used_fine_scale_fallback": False,
             }
         )

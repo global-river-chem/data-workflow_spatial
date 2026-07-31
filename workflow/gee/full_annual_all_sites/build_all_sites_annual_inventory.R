@@ -4,22 +4,16 @@ suppressPackageStartupMessages({
   library(tidyr)
 })
 
+source(file.path("workflow", "lib", "workflow_helpers.R"))
+
 args <- commandArgs(trailingOnly = TRUE)
 
 get_arg <- function(flag, default = NULL) {
-  hit <- which(args == flag)
-  if (!length(hit)) {
-    return(default)
-  }
-  if (hit[1] == length(args)) {
-    stop("Missing value for ", flag, call. = FALSE)
-  }
-  args[hit[1] + 1]
+  cli_value(args, flag, default = default)
 }
 
 parse_bool_arg <- function(flag, default) {
-  value <- get_arg(flag, if (default) "TRUE" else "FALSE")
-  toupper(value) %in% c("TRUE", "T", "1", "YES", "Y")
+  cli_boolean(args, flag, default = default)
 }
 
 regex_escape <- function(x) {
@@ -35,15 +29,6 @@ is_true_flag <- function(x) {
   tolower(as.character(x)) %in% c("true", "1")
 }
 
-clean_lter_name <- function(x) {
-  recode(
-    trimws(x),
-    "Swedish Goverment" = "Sweden",
-    "Swedish Government" = "Sweden",
-    .default = trimws(x)
-  )
-}
-
 count_present_values <- function(data, columns) {
   if (!length(columns)) {
     return(rep(0L, nrow(data)))
@@ -56,13 +41,11 @@ slug <- get_arg("--slug", sub("_fine_scale$", "", run_label))
 start_year <- as.integer(get_arg("--start-year", "2000"))
 end_year <- as.integer(get_arg("--end-year", "2025"))
 input_dir <- get_arg("--input-dir", "")
-box_spatial_root <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/spatial-data-extractions"
-box_gee_folder <- file.path(box_spatial_root, "spatial-data-files", "gee", "earth-engine-outputs")
-box_inventory_folder <- file.path(box_spatial_root, "master-datasets")
+search_dirs <- cli_values(args, "--search-dir")
 output_dir <- get_arg(
   "--output-dir",
   file.path(
-    box_inventory_folder,
+    "generated_outputs",
     paste0(slug, "_era5_land_inventory_", format(Sys.Date(), "%Y%m%d"))
   )
 )
@@ -73,9 +56,8 @@ if (is.na(start_year) || is.na(end_year) || start_year > end_year) {
   stop("Expected --start-year and --end-year to define a valid year range.", call. = FALSE)
 }
 
-downloads_folder <- "/Users/sidneybush/Downloads"
-box_gee_dirs <- if (dir.exists(box_gee_folder)) {
-  list.dirs(box_gee_folder, recursive = TRUE, full.names = TRUE)
+generated_output_dirs <- if (dir.exists("generated_outputs")) {
+  list.dirs("generated_outputs", recursive = TRUE, full.names = TRUE)
 } else {
   character(0)
 }
@@ -88,10 +70,8 @@ era5_pattern <- paste0(
 
 candidate_dirs <- first_existing_dir(c(
   input_dir,
-  box_gee_dirs,
-  if (dir.exists(downloads_folder)) list.dirs(downloads_folder, recursive = FALSE, full.names = TRUE) else character(0),
-  downloads_folder,
-  box_gee_folder
+  search_dirs,
+  generated_output_dirs
 ))
 
 files_by_dir <- lapply(candidate_dirs, function(folder) {
@@ -119,7 +99,8 @@ if (!nrow(folder_summary)) {
   stop(
     "Could not find ERA5-Land exports for run label `",
     run_label,
-    "`. Download the Colab CSVs first, or pass --input-dir.",
+    "`. Download the Colab CSVs first, pass --input-dir, or repeat ",
+    "--search-dir for additional locations.",
     call. = FALSE
   )
 }
@@ -177,11 +158,7 @@ wide <- export_files %>%
     read_csv(path, show_col_types = FALSE) %>%
       mutate(source_export_file = basename(path))
   }) %>%
-  bind_rows() %>%
-  mutate(
-    lter = clean_lter_name(lter),
-    site_id = sub("^swedish_goverment__", "sweden__", site_id)
-  )
+  bind_rows()
 
 if (!"used_centroid_fallback" %in% names(wide)) {
   wide$used_centroid_fallback <- NA

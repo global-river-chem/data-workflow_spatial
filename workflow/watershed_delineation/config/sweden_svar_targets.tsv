@@ -1,0 +1,5 @@
+Stream_Name	Shapefile_Name	previous_name	latitude	longitude	reported_area_km2	outlet_aroid	write_replacement
+Ljusnan Ljusne Strommar	sweden_svar_ljusnan	SWE_Gov_Ljungan	61.2127521	17.0818959	19818	678958-156752	Yes
+Alsteran Getebro	sweden_svar_alsteran	SWE_Gov_Altersundet	57.0088186	16.1621751	1333	632066-152160	Yes
+Ronnean Klippan	sweden_svar_ronnean	SWE_Gov_Ronne a	56.1216834	13.1443068	963	622546-133261	Yes
+Delangersan Iggesund	sweden_svar_delangersan	SWE_Gov_Delangersan	61.6378506	17.0863531	1992	684058-156819	No
