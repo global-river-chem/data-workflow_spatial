@@ -33,6 +33,10 @@ Run the export script without `--submit`, then run the safety check printed by
 the script. Submit that same task with the generated safety file and check its
 result and Earth Engine cost.
 
+For an unmeasured workflow, add `--watchdog-cancel-eecu-hours HOURS` to the
+printed safety command when a stricter first-task cap is warranted. The option
+can lower but cannot raise the automatic watchdog threshold.
+
 ### Finish the run
 
 Raise the task limit only after the first export passes review. Download and
@@ -40,6 +44,10 @@ validate the complete set before using it in the combined spatial file.
 
 The export scripts limit both task size and task count. Do not bypass those
 checks. For a new or changed workflow, start with one task.
+
+Local preparation, quota accounting, monitoring, consolidation, and QA are R
+workflows. Python is reserved for launchers that construct and submit Earth
+Engine computations.
 
 ## Entry points
 
@@ -51,12 +59,12 @@ checks. For a new or changed workflow, start with one task.
 | Build local GLC sample points | `land_cover/build_local_glc_sample_points.R` |
 | Monthly or weekly ERA5 summaries | `era5_land/aggregate_daily_era5_land.R` |
 | GLC-FCS30D land cover | `land_cover/run_safe_glc_fcs30d_exports.py` |
-| Download and check GLC results | `land_cover/consolidate_safe_glc_fcs30d_exports.py` |
+| Download and check GLC results | `land_cover/consolidate_safe_glc_fcs30d_exports.R` |
 | Human impacts for missing sites | `human_impacts/run_missing_site_exports.py` |
 | Organize completed Drive exports | `post_export/organize_gee_exports_in_drive.R` |
 | Compare annual exports with an earlier run | `post_run_qa/run_old_vs_gee_annual_comparison_qa.R` |
-| Quota safety check | `gee_quota_preflight.py` |
-| Monitor running tasks | `gee_task_watchdog.py` |
+| Quota safety check | `gee_quota_preflight.R` |
+| Monitor running tasks | `gee_task_watchdog.R` |
 
 Use `workflow/build_updated_watershed_asset.py` when a checked additions asset
 must be merged with an existing Earth Engine watershed asset. It derives all

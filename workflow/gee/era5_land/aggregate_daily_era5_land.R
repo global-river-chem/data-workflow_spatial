@@ -35,6 +35,7 @@ value_columns <- c(
   "precip_mm",
   "temp_degC",
   "evapotrans_mm",
+  "potential_evap_mm",
   "snow_cover_fraction",
   "snow_water_equiv_mm"
 )
@@ -90,8 +91,16 @@ monthly <- daily |>
     precip_mm = complete_sum(precip_mm, complete_period),
     temp_degC = complete_mean(temp_degC, complete_period),
     evapotrans_mm = complete_sum(evapotrans_mm, complete_period),
+    potential_evap_mm = complete_sum(potential_evap_mm, complete_period),
     snow_cover_fraction = complete_mean(snow_cover_fraction, complete_period),
     snow_water_equiv_mm = complete_mean(snow_water_equiv_mm, complete_period),
+    used_fine_scale_fallback = if (
+      "used_fine_scale_fallback" %in% names(daily)
+    ) {
+      available_max(used_fine_scale_fallback)
+    } else {
+      NA_real_
+    },
     used_centroid_fallback = if ("used_centroid_fallback" %in% names(daily)) {
       available_max(used_centroid_fallback)
     } else {
@@ -118,8 +127,16 @@ if (write_weekly) {
       precip_mm = complete_sum(precip_mm, complete_period),
       temp_degC = complete_mean(temp_degC, complete_period),
       evapotrans_mm = complete_sum(evapotrans_mm, complete_period),
+      potential_evap_mm = complete_sum(potential_evap_mm, complete_period),
       snow_cover_fraction = complete_mean(snow_cover_fraction, complete_period),
       snow_water_equiv_mm = complete_mean(snow_water_equiv_mm, complete_period),
+      used_fine_scale_fallback = if (
+        "used_fine_scale_fallback" %in% names(daily)
+      ) {
+        available_max(used_fine_scale_fallback)
+      } else {
+        NA_real_
+      },
       used_centroid_fallback = if ("used_centroid_fallback" %in% names(daily)) {
         available_max(used_centroid_fallback)
       } else {

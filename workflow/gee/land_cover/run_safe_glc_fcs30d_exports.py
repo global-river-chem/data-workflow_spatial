@@ -17,6 +17,7 @@ import math
 import os
 import re
 import shlex
+import subprocess
 import sys
 from dataclasses import dataclass, replace
 from functools import lru_cache
@@ -31,13 +32,10 @@ except ImportError:  # Keep pure planning functions importable in tests.
 
 
 HELPER_ROOT = Path(__file__).resolve().parents[1]
-if str(HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(HELPER_ROOT))
-from gee_quota_preflight import (  # noqa: E402
-    MAX_EFFECTIVE_PIXELS_PER_TASK,
-    MAX_TASKS_PER_LAUNCH,
-    consume_preflight_receipt,
-)
+
+
+MAX_EFFECTIVE_PIXELS_PER_TASK = 100_000_000
+MAX_TASKS_PER_LAUNCH = 5
 
 
 DEFAULT_PROJECT = os.getenv("SILICA_GEE_PROJECT", "silica-synthesis")
@@ -93,6 +91,7 @@ DEFAULT_SAMPLE_POINTS = 100_000
 # pixel/point x date observations.
 DEFAULT_EXACT_MAX_WORK = DEFAULT_SAMPLE_POINTS * len(YEARS)
 SAMPLER_VERSION = "local_equal_area_points_v1"
+SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
 DEFAULT_RUN_ROOT = Path("generated_outputs/gee/glc-fcs30d-safe")
 ACTIVE_STATES = {
     "READY",
@@ -398,10 +397,10 @@ def method_code(method: str, sample_points: int) -> str:
     if method == "exact":
         return "x"
     if sample_points % 1_000_000 == 0:
-        return f"lps{sample_points // 1_000_000}m"
+        return f"mph{sample_points // 1_000_000}m"
     if sample_points % 1_000 == 0:
-        return f"lps{sample_points // 1_000}k"
-    return f"lps{sample_points}"
+        return f"mph{sample_points // 1_000}k"
+    return f"mph{sample_points}"
 
 
 # ---- Task planning ----
@@ -527,6 +526,9 @@ def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
             "native_scale_m": NATIVE_SCALE_M,
             "source_collections": [FIVE_YEAR_COLLECTION, ANNUAL_COLLECTION],
             "sampler_version": SAMPLER_VERSION if plan.method == "sample" else None,
+            "sampled_reducer_version": (
+                SAMPLED_REDUCER_VERSION if plan.method == "sample" else None
+            ),
             "local_point_file_sha256": (
                 plan.local_point_sample.file_sha256
                 if plan.local_point_sample is not None
@@ -687,6 +689,7 @@ def base_output_properties(plan: TaskPlan, year: int) -> dict[str, Any]:
                     plan.local_point_sample.source_geometry_sha256
                 ),
                 "local_point_sampling_crs": plan.local_point_sample.sampling_crs,
+                "sampled_reducer_version": SAMPLED_REDUCER_VERSION,
             }
         )
     return {key: value for key, value in result.items() if value is not None}
@@ -752,31 +755,35 @@ def build_sample_export(plan: TaskPlan) -> Any:
     if local_sample is None:
         raise ValueError(f"No local point sample for {plan.site.site_id}.")
     value = read_local_point_file(local_sample.path)
-    coordinates = ee.List(value["coordinates"])
-
-    def point_feature(coordinate: Any) -> Any:
-        return ee.Feature(ee.Geometry.Point(ee.List(coordinate)))
-
-    points = ee.FeatureCollection(coordinates.map(point_feature))
-    bounds = ee.Geometry.Rectangle(
-        list(local_sample.bounds), proj="EPSG:4326", geodesic=False
-    )
-    image = glc_multiband_image(bounds)
-    samples = image.unmask(-999).sampleRegions(
-        collection=points,
-        properties=[],
-        scale=NATIVE_SCALE_M,
-        tileScale=4,
-        geometries=False,
+    points = ee.Geometry.MultiPoint(value["coordinates"], "EPSG:4326")
+    image = glc_multiband_image(points)
+    histograms = ee.Dictionary(
+        image.unmask(-999).reduceRegion(
+            reducer=ee.Reducer.frequencyHistogram(),
+            geometry=points,
+            scale=NATIVE_SCALE_M,
+            bestEffort=False,
+            maxPixels=local_sample.sample_n * len(YEARS) + 10_000,
+            tileScale=4,
+        )
     )
     polygon_area_m2 = ee.Number(plan.site.area_km2 * 1_000_000)
     yearly_tables = []
     for year in YEARS:
-        histogram = ee.Dictionary(samples.aggregate_histogram(str(year)))
+        histogram = ee.Dictionary(
+            histograms.get(str(year), ee.Dictionary({}))
+        )
+        total_n = ee.Number(
+            ee.Algorithms.If(
+                histogram.size().gt(0),
+                histogram.values().reduce(ee.Reducer.sum()),
+                0,
+            )
+        )
         missing_n = ee.Number(
             ee.Algorithms.If(histogram.contains("-999"), histogram.get("-999"), 0)
         )
-        sample_n = ee.Number(samples.size()).subtract(missing_n)
+        sample_n = total_n.subtract(missing_n)
         safe_sample_n = sample_n.max(1)
         base = ee.Dictionary(base_output_properties(plan, year))
 
@@ -858,8 +865,8 @@ def preflight_dimensions(plans: list[TaskPlan]) -> dict[str, Any]:
 def preflight_command(project: str, plans: list[TaskPlan], receipt: Path) -> str:
     dimensions = preflight_dimensions(plans)
     command = [
-        sys.executable,
-        str(HELPER_ROOT / "gee_quota_preflight.py"),
+        "Rscript",
+        str(HELPER_ROOT / "gee_quota_preflight.R"),
         "--project",
         project,
         "--workflow",
@@ -886,6 +893,53 @@ def preflight_command(project: str, plans: list[TaskPlan], receipt: Path) -> str
         str(receipt),
     ]
     return shlex.join(command)
+
+
+def consume_preflight_receipt(
+    receipt: Path,
+    *,
+    project: str,
+    workflow: str,
+    description_prefix: str,
+    proposed_task_count: int,
+    site_count: int,
+    max_task_area_km2: float,
+    scale_m: float,
+    time_slices_per_task: int,
+    bands_per_slice: int,
+    effective_pixels_per_task: float,
+    workload_fingerprint: str,
+) -> None:
+    command = [
+        "Rscript",
+        str(HELPER_ROOT / "gee_quota_preflight.R"),
+        "--consume",
+        "--receipt",
+        str(receipt),
+        "--project",
+        project,
+        "--workflow",
+        workflow,
+        "--description-prefix",
+        description_prefix,
+        "--proposed-task-count",
+        str(proposed_task_count),
+        "--site-count",
+        str(site_count),
+        "--max-task-area-km2",
+        str(max_task_area_km2),
+        "--scale-m",
+        str(scale_m),
+        "--time-slices-per-task",
+        str(time_slices_per_task),
+        "--bands-per-slice",
+        str(bands_per_slice),
+        "--effective-pixels-per-task",
+        str(effective_pixels_per_task),
+        "--workload-fingerprint",
+        workload_fingerprint,
+    ]
+    subprocess.run(command, check=True)
 
 
 # ---- Command line ----

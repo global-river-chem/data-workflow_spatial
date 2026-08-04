@@ -13,6 +13,7 @@ import csv
 import json
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,14 +26,49 @@ except ImportError:  # Allow --help before Earth Engine is installed.
 
 
 HELPER_ROOT = Path(__file__).resolve().parents[1]
-if str(HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(HELPER_ROOT))
-from gee_quota_preflight import consume_preflight_receipt  # noqa: E402
 
 
 DEFAULT_PROJECT = os.getenv("SILICA_GEE_PROJECT", "silica-synthesis")
 DEFAULT_BASELINE_ASSET = os.getenv("SILICA_GEE_BASELINE_ASSET", "")
 DEFAULT_WORKFLOW_ROOT = os.getenv("SILICA_HUMAN_IMPACT_WORKFLOW_ROOT", "")
+
+
+def consume_preflight_receipt(
+    receipt: Path,
+    *,
+    project: str,
+    workflow: str,
+    description_prefix: str,
+    proposed_task_count: int,
+    site_count: int,
+    max_task_area_km2: float,
+    scale_m: float,
+    time_slices_per_task: int,
+) -> None:
+    command = [
+        "Rscript",
+        str(HELPER_ROOT / "gee_quota_preflight.R"),
+        "--consume",
+        "--receipt",
+        str(receipt),
+        "--project",
+        project,
+        "--workflow",
+        workflow,
+        "--description-prefix",
+        description_prefix,
+        "--proposed-task-count",
+        str(proposed_task_count),
+        "--site-count",
+        str(site_count),
+        "--max-task-area-km2",
+        f"{max_task_area_km2:.6f}",
+        "--scale-m",
+        str(scale_m),
+        "--time-slices-per-task",
+        str(time_slices_per_task),
+    ]
+    subprocess.run(command, check=True)
 SITE_ID_PROPERTY = "site_id"
 STATIC_DATASETS = ("dams", "fertilizer", "wastewater")
 LABEL_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_]*$")
@@ -115,7 +151,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--preflight-receipt",
         type=Path,
-        help="Fresh, approved receipt from gee_quota_preflight.py.",
+        help="Fresh, approved receipt from gee_quota_preflight.R.",
     )
     args = parser.parse_args()
     if not args.baseline_asset:
@@ -468,7 +504,7 @@ def main() -> None:
     if launch_plan:
         print(
             "Required preflight:\n"
-            "  python3 workflow/gee/gee_quota_preflight.py "
+            "  Rscript workflow/gee/gee_quota_preflight.R "
             "--workflow human_impacts_new_sites "
             "--description-prefix human_impacts_ "
             f"--proposed-task-count {len(launch_plan)} "

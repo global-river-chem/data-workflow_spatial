@@ -2,12 +2,23 @@
 
 This file records major workflow changes. Row-level corrections are documented in the current Site Reference Table and its audit workbook.
 
+## 2026-08-05
+
+- Completed and strictly validated annual ERA5-Land exports for all 639 incremental sites for 2000 and 2001. Each year contains 11 disjoint assets with complete values for the six required variables; combined Earth Engine use was about 0.000174 EECU-hours.
+- Kept later ERA5-Land years unsubmitted pending the year-by-year production sequence. Each year remains limited to five concurrent tasks, full 639-site QA, and a 0.01 EECU-hour per-task watchdog cap.
+- Converted local quota accounting, task monitoring, GLC consolidation, QA, and tests to R. Python is retained only for launchers that construct and submit Earth Engine computations.
+
 ## 2026-08-04
 
-- Verified the restored 1,000-hour Earth Engine contributor quota and added one-use live quota receipts, faster monitoring, and a two-EECU watchdog for unmeasured task types.
-- Reused accepted prior coverage only where the current watershed file and spatial-data version still match. The remaining target layers contain 637 GLC watersheds and 639 ERA5-Land or human-impact watersheds.
+- Verified the restored 1,000-hour Earth Engine contributor quota and added one-use live quota receipts and active task monitoring.
+- Verified all 26 accepted ERA5-Land annual assets from 2000–2025: each contains the same 524 distinct sites and complete values for all six variables. Of the 1,003 current watershed IDs, 364 can reuse those outputs unchanged, 21 require rerunning after a watershed or spatial-version change, and 618 were not in the accepted run. The exact ERA5-Land and human-impact incremental target is therefore 639 IDs; 139 prior IDs are no longer current.
+- Reused accepted prior coverage only where the current watershed file and spatial-data version still match. The remaining GLC target layer contains 637 watersheds.
 - Replaced server-side random-point construction for large GLC watersheds with deterministic equal-area point generation in R. Prepared 10,000 fixed points for each of 492 sampled watersheds; 145 smaller watersheds remain eligible for exact extraction.
 - Stopped the fixed-point Amazon pilot at its conservative two-EECU limit before completion. No GLC batch rollout was started, and generated point files, manifests, receipts, and task logs remain excluded from Git.
+- Reworked sampled GLC extraction as one direct multiband histogram over the fixed multipoint geometry. The optimized Amazon graph passes a dry run, but live large-watershed GLC remains paused until Partner Tier because serialization alone cannot establish its cost.
+- Kept six incremental ERA5-Land daily tests as validation-only assets. They confirmed low task cost but do not match the accepted annual reducer and fine-scale polygon-retry method, so they will not be merged into the final dataset.
+- Stopped a January full-set ERA5-Land test after eight payloads completed, one was cancelled after starting, and one was cancelled before starting. The isolated tests duplicated some accepted coverage and exposed an incorrect 0–100 snow-cover value labeled as a fraction. No additional full-set tasks will be submitted; annual production is restricted to the audited 639-ID incremental target.
+- Restored the accepted annual sum, mean, and maximum reducers, the 0–1 snow-cover conversion, and the fine-scale polygon retry in the safe launcher. No bulk GLC or human-impact tasks were launched.
 - Kept MODIS NPP and greenup day in the current AppEEARS workflow. Their future GEE replacements will require overlap validation before use in a release.
 
 ## 2026-07-30

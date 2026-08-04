@@ -55,16 +55,17 @@ This is a dry run. Follow the printed safety-check command, then repeat the
 same launch with `--submit --preflight-receipt PATH`. Review the first result
 and its Earth Engine cost before submitting more tasks.
 
-Sampled tasks read all 26 dates in one multiband pass from fixed local points.
-They never ask Earth Engine to construct random points within the watershed
-polygon. The task description, fingerprint, and output metadata include the
-sampler version and exact point-file checksum, so results and cost history from
-older graphs cannot be mixed into a new run.
+Sampled tasks reduce all 26 bands directly over one fixed multipoint geometry.
+They do not create a 10,000-row intermediate feature table or ask Earth Engine
+to construct random points within the watershed polygon. The task description,
+fingerprint, and output metadata include the reducer version, sampler version,
+and exact point-file checksum, so results and cost history from older graphs
+cannot be mixed into a new run.
 
 ## Download and check the complete run
 
 ```bash
-python3 workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.py \
+Rscript workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R \
   --manifest PATH/TO/payload_manifest.csv \
   --project PROJECT \
   --run-label RELEASE_NAME \
