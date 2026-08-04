@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import sys
+import csv
+import hashlib
+import json
 import unittest
+from dataclasses import replace
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 LAND_COVER_ROOT = Path(__file__).resolve().parents[1] / "land_cover"
@@ -14,10 +19,12 @@ from run_safe_glc_fcs30d_exports import (  # noqa: E402
     DEFAULT_SAMPLE_POINTS,
     DEFAULT_EXACT_MAX_WORK,
     GLC_CLASSES,
+    LocalPointSample,
     YEARS,
     Site,
     canonical_sha256,
     launch_batch,
+    load_local_point_samples,
     plan_tasks,
     preflight_dimensions,
     sampling_standard_error,
@@ -60,7 +67,7 @@ def site(site_id: str, area_km2: float, coordinate: float = 0) -> Site:
 
 
 def plans_for(sites: list[Site], method: str = "auto"):
-    return plan_tasks(
+    plans = plan_tasks(
         sites=sites,
         method=method,
         sample_points=DEFAULT_SAMPLE_POINTS,
@@ -68,6 +75,25 @@ def plans_for(sites: list[Site], method: str = "auto"):
         run_label="unit",
         output_folder="projects/test/assets/glc_safe_unit",
     )
+    return [
+        replace(
+            plan,
+            local_point_sample=LocalPointSample(
+                site_id=plan.site.site_id,
+                path=Path(f"/not-read/{plan.site.site_id}.json"),
+                file_sha256=canonical_sha256({"site_id": plan.site.site_id}),
+                sample_n=plan.sample_points,
+                sampling_seed=plan.sampling_seed,
+                sampling_crs="EPSG:6933",
+                polygon_area_km2=plan.site.area_km2,
+                source_geometry_sha256=canonical_sha256(plan.site.feature["geometry"]),
+                bounds=(0, 0, 1, 1),
+            ),
+        )
+        if plan.method == "sample"
+        else plan
+        for plan in plans
+    ]
 
 
 class PlanningTests(unittest.TestCase):
@@ -110,11 +136,109 @@ class PlanningTests(unittest.TestCase):
         sample = plans_for([site("large", 100_000)])
         exact = plans_for([site("small", 50)])
         self.assertEqual(
-            preflight_dimensions(sample)["description_prefix"], "glcsafe_s_"
+            preflight_dimensions(sample)["description_prefix"], "glcsafe_lps100k_"
         )
         self.assertEqual(
             preflight_dimensions(exact)["description_prefix"], "glcsafe_x_"
         )
+
+    def test_receipt_prefix_separates_sample_sizes(self) -> None:
+        default = plans_for([site("large", 100_000)])
+        smaller = plan_tasks(
+            sites=[site("large", 100_000)],
+            method="auto",
+            sample_points=10_000,
+            exact_max_work=10_000 * len(YEARS),
+            run_label="unit",
+            output_folder="projects/test/assets/glc_safe_unit",
+        )
+        smaller = [
+            replace(
+                smaller[0],
+                local_point_sample=LocalPointSample(
+                    site_id=smaller[0].site.site_id,
+                    path=Path("/not-read/smaller.json"),
+                    file_sha256="1" * 64,
+                    sample_n=smaller[0].sample_points,
+                    sampling_seed=smaller[0].sampling_seed,
+                    sampling_crs="EPSG:6933",
+                    polygon_area_km2=smaller[0].site.area_km2,
+                    source_geometry_sha256="2" * 64,
+                    bounds=(0, 0, 1, 1),
+                ),
+            )
+        ]
+        self.assertEqual(
+            preflight_dimensions(default)["description_prefix"],
+            "glcsafe_lps100k_",
+        )
+        self.assertEqual(
+            preflight_dimensions(smaller)["description_prefix"],
+            "glcsafe_lps10k_",
+        )
+
+    def test_sampled_fingerprint_requires_local_points(self) -> None:
+        raw = plan_tasks(
+            sites=[site("large", 100_000)],
+            method="auto",
+            sample_points=10_000,
+            exact_max_work=10_000 * len(YEARS),
+            run_label="unit",
+            output_folder="projects/test/assets/glc_safe_unit",
+        )
+        with self.assertRaisesRegex(ValueError, "lack local point files"):
+            workload_fingerprint(raw)
+
+    def test_local_point_manifest_validates_file_checksum_and_coordinates(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample_path = root / "sample.json"
+            payload = {
+                "schema_version": 1,
+                "generator": "local_equal_area_points_v1",
+                "site_id": "large",
+                "sampling_crs": "EPSG:6933",
+                "sampling_seed": stable_seed("large"),
+                "requested_sample_n": 2,
+                "polygon_area_km2": 100_000,
+                "source_geometry_sha256": "a" * 64,
+                "bounds": [-1, -2, 3, 4],
+                "coordinates": [[-1, -2], [3, 4]],
+            }
+            sample_path.write_text(json.dumps(payload), encoding="utf-8")
+            manifest_path = root / "manifest.csv"
+            with manifest_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=(
+                        "site_id",
+                        "path",
+                        "sample_n",
+                        "sampling_seed",
+                        "sampling_crs",
+                        "polygon_area_km2",
+                        "source_geometry_sha256",
+                        "file_sha256",
+                    ),
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "site_id": "large",
+                        "path": sample_path.name,
+                        "sample_n": 2,
+                        "sampling_seed": stable_seed("large"),
+                        "sampling_crs": "EPSG:6933",
+                        "polygon_area_km2": 100_000,
+                        "source_geometry_sha256": "a" * 64,
+                        "file_sha256": hashlib.sha256(
+                            sample_path.read_bytes()
+                        ).hexdigest(),
+                    }
+                )
+            sample = load_local_point_samples(manifest_path)["large"]
+            self.assertEqual(sample.sample_n, 2)
+            self.assertEqual(sample.bounds, (-1, -2, 3, 4))
 
     def test_fingerprint_changes_if_geometry_changes(self) -> None:
         first = plans_for([site("same", 100, coordinate=0)])

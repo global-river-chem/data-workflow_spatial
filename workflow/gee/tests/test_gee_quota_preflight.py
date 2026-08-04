@@ -216,7 +216,7 @@ class DecisionTests(unittest.TestCase):
         )
         self.assertEqual(result["limits"]["max_batch_eecu_hours"], 100)
         self.assertEqual(result["limits"]["max_single_task_eecu_hours"], 25)
-        self.assertEqual(result["limits"]["watchdog_cancel_eecu_hours"], 5)
+        self.assertEqual(result["limits"]["watchdog_cancel_eecu_hours"], 2)
 
     def test_projection_cannot_cross_monthly_safety_stop(self) -> None:
         result = evaluate_preflight(

@@ -46,6 +46,7 @@ DEFAULT_PRODUCTS = (
     "precip",
     "temp",
     "evapotrans",
+    "potential_evap",
     "snow_cover",
     "snow_water_equiv",
 )

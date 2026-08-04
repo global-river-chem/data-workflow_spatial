@@ -18,7 +18,6 @@ except ImportError:
 
 
 from run_safe_glc_fcs30d_exports import (
-    DEFAULT_EXACT_MAX_WORK,
     DEFAULT_PROJECT,
     DEFAULT_RUN_ROOT,
     DEFAULT_SAMPLE_POINTS,
@@ -61,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-folder")
     parser.add_argument("--method", choices=("auto", "exact", "sample"), default="auto")
     parser.add_argument("--sample-points", type=int, default=DEFAULT_SAMPLE_POINTS)
-    parser.add_argument("--exact-max-work", type=float, default=DEFAULT_EXACT_MAX_WORK)
+    parser.add_argument("--exact-max-work", type=float)
     parser.add_argument("--expected-site-count", type=int)
     parser.add_argument("--output", type=Path)
     parser.add_argument(
@@ -70,6 +69,8 @@ def parse_args() -> argparse.Namespace:
         help="Download only if every expected per-site asset is complete.",
     )
     args = parser.parse_args()
+    if args.exact_max_work is None:
+        args.exact_max_work = args.sample_points * len(YEARS)
     args.manifest = args.manifest or args.run_root / "payload_manifest.csv"
     args.output_folder = args.output_folder or (
         f"projects/{args.project}/assets/glc_fcs30d_safe_{args.run_label}"

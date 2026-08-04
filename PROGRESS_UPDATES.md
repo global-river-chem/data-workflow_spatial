@@ -2,6 +2,14 @@
 
 This file records major workflow changes. Row-level corrections are documented in the current Site Reference Table and its audit workbook.
 
+## 2026-08-04
+
+- Verified the restored 1,000-hour Earth Engine contributor quota and added one-use live quota receipts, faster monitoring, and a two-EECU watchdog for unmeasured task types.
+- Reused accepted prior coverage only where the current watershed file and spatial-data version still match. The remaining target layers contain 637 GLC watersheds and 639 ERA5-Land or human-impact watersheds.
+- Replaced server-side random-point construction for large GLC watersheds with deterministic equal-area point generation in R. Prepared 10,000 fixed points for each of 492 sampled watersheds; 145 smaller watersheds remain eligible for exact extraction.
+- Stopped the fixed-point Amazon pilot at its conservative two-EECU limit before completion. No GLC batch rollout was started, and generated point files, manifests, receipts, and task logs remain excluded from Git.
+- Kept MODIS NPP and greenup day in the current AppEEARS workflow. Their future GEE replacements will require overlap validation before use in a release.
+
 ## 2026-07-30
 
 - Finalized the revised Site Reference Table and froze the changed watershed inputs for this extraction round.

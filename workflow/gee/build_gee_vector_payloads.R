@@ -22,8 +22,7 @@ suppressPackageStartupMessages({
   library(sf)
 })
 
-source(file.path("tools", "cli_helpers.R"))
-source(file.path("tools", "workflow_paths.R"))
+source(file.path("workflow", "lib", "workflow_helpers.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 repo_root <- silica_find_repo_root()

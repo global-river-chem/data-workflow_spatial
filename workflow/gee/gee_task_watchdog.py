@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--description-prefix", required=True)
     parser.add_argument("--warning-eecu-hours", type=float, default=10.0)
     parser.add_argument("--cancel-eecu-hours", type=float, default=25.0)
-    parser.add_argument("--poll-seconds", type=int, default=30)
+    parser.add_argument("--poll-seconds", type=int, default=10)
     parser.add_argument(
         "--wait-for-first-task-seconds",
         type=int,

@@ -20,15 +20,30 @@ Rscript workflow/gee/build_gee_vector_payloads.R \
   --output-root PATH/TO/glc-payloads \
   --payload-prefix glc \
   --property-prefix glc \
-  --simplification-profile fine-30m \
+  --simplification-profile coarse-1km \
+  --maximum-area-error-pct 0.1 \
   --expected-site-count SITE_COUNT
 ```
 
 ## Plan and submit one task
 
+Generate fixed sample points locally before planning sampled tasks. Sampling is
+uniform in the EPSG:6933 equal-area projection and uses a stable site-specific
+seed. This step does not call Earth Engine.
+
+```bash
+Rscript workflow/gee/land_cover/build_local_glc_sample_points.R \
+  --watersheds PATH/TO/watersheds.gpkg \
+  --output-root PATH/TO/glc-local-points \
+  --sample-points 10000 \
+  --exact-max-work 260000 \
+  --expected-sampled-sites SAMPLED_SITE_COUNT
+```
+
 ```bash
 python3 workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py \
   --manifest PATH/TO/payload_manifest.csv \
+  --local-point-manifest PATH/TO/glc-local-points/point_sample_manifest.csv \
   --project PROJECT \
   --run-label RELEASE_NAME \
   --method auto \
@@ -39,6 +54,12 @@ python3 workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py \
 This is a dry run. Follow the printed safety-check command, then repeat the
 same launch with `--submit --preflight-receipt PATH`. Review the first result
 and its Earth Engine cost before submitting more tasks.
+
+Sampled tasks read all 26 dates in one multiband pass from fixed local points.
+They never ask Earth Engine to construct random points within the watershed
+polygon. The task description, fingerprint, and output metadata include the
+sampler version and exact point-file checksum, so results and cost history from
+older graphs cannot be mixed into a new run.
 
 ## Download and check the complete run
 

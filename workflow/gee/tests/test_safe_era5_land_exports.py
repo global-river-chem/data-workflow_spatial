@@ -50,9 +50,9 @@ class ParsingTests(unittest.TestCase):
 
 
 class PlanningTests(unittest.TestCase):
-    def test_defaults_are_the_requested_five_bands(self) -> None:
-        self.assertEqual(len(DEFAULT_PRODUCTS), 5)
-        self.assertNotIn("potential_evap", DEFAULT_PRODUCTS)
+    def test_defaults_are_the_requested_six_bands(self) -> None:
+        self.assertEqual(len(DEFAULT_PRODUCTS), 6)
+        self.assertIn("potential_evap", DEFAULT_PRODUCTS)
         self.assertEqual(PRODUCTS["snow_cover"].daily_scale, 1.0)
         self.assertEqual(PRODUCTS["evapotrans"].daily_scale, -1_000.0)
 
@@ -68,7 +68,9 @@ class PlanningTests(unittest.TestCase):
         )
         self.assertEqual(plans[0].payload.name, "large")
         self.assertEqual(plans[0].month, 3)
-        expected = 1_000 * 1_000_000 / NATIVE_SCALE_M**2 * 31 * 5
+        expected = (
+            1_000 * 1_000_000 / NATIVE_SCALE_M**2 * 31 * len(DEFAULT_PRODUCTS)
+        )
         self.assertAlmostEqual(plans[0].effective_pixel_band_days, expected)
 
     def test_monthly_tasks_are_also_bounded_to_one_source_month(self) -> None:

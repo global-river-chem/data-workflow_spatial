@@ -23,6 +23,7 @@ if (!dir.exists(shapefile_root)) {
   stop("Missing versioned watershed library: ", shapefile_root, call. = FALSE)
 }
 dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
+output_root <- normalizePath(output_root)
 
 site_table <- read_workflow_table(site_table_path)
 required <- c(

@@ -2,7 +2,8 @@
 
 The workflow extracts daily ERA5-Land values once and creates monthly or
 weekly summaries locally. The default products are precipitation,
-temperature, evapotranspiration, snow cover, and snow-water equivalent.
+temperature, evapotranspiration, potential evaporation, snow cover, and
+snow-water equivalent.
 
 ERA5-Land stores evaporation as a negative flux; the export reports positive
 evapotranspiration. Very small watersheds without a native-grid pixel center
@@ -21,7 +22,7 @@ Rscript workflow/gee/build_gee_vector_payloads.R \
   --expected-site-count SITE_COUNT \
   --analysis-scale-m 11100 \
   --time-slices-per-task 31 \
-  --bands-per-slice 5
+  --bands-per-slice 6
 ```
 
 ## Plan and submit one task

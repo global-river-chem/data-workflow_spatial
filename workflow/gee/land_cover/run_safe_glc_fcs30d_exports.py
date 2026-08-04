@@ -92,6 +92,7 @@ DEFAULT_SAMPLE_POINTS = 100_000
 # Consequently every default task is bounded to the same 2.6 million
 # pixel/point x date observations.
 DEFAULT_EXACT_MAX_WORK = DEFAULT_SAMPLE_POINTS * len(YEARS)
+SAMPLER_VERSION = "local_equal_area_points_v1"
 DEFAULT_RUN_ROOT = Path("generated_outputs/gee/glc-fcs30d-safe")
 ACTIVE_STATES = {
     "READY",
@@ -117,6 +118,19 @@ class Site:
 
 
 @dataclass(frozen=True)
+class LocalPointSample:
+    site_id: str
+    path: Path
+    file_sha256: str
+    sample_n: int
+    sampling_seed: int
+    sampling_crs: str
+    polygon_area_km2: float
+    source_geometry_sha256: str
+    bounds: tuple[float, float, float, float]
+
+
+@dataclass(frozen=True)
 class TaskPlan:
     description: str
     asset_id: str
@@ -126,6 +140,7 @@ class TaskPlan:
     sampling_seed: int
     native_pixel_estimate: float
     effective_pixel_band_time: float
+    local_point_sample: LocalPointSample | None = None
 
 
 # ---- Input parsing ----
@@ -210,6 +225,161 @@ def load_sites(manifest_path: Path) -> list[Site]:
     return sites
 
 
+@lru_cache(maxsize=None)
+def read_local_point_file(path: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if value.get("schema_version") != 1:
+        raise ValueError(f"Unsupported local-point schema in {path}.")
+    if value.get("generator") != SAMPLER_VERSION:
+        raise ValueError(f"Unexpected local-point generator in {path}.")
+    return value
+
+
+def load_local_point_samples(manifest_path: Path) -> dict[str, LocalPointSample]:
+    manifest = manifest_path.resolve()
+    if not manifest.is_file():
+        raise ValueError(f"Local-point manifest does not exist: {manifest}")
+    with manifest.open(newline="", encoding="utf-8-sig") as handle:
+        rows = list(csv.DictReader(handle))
+    required = {
+        "site_id",
+        "path",
+        "sample_n",
+        "sampling_seed",
+        "sampling_crs",
+        "polygon_area_km2",
+        "source_geometry_sha256",
+        "file_sha256",
+    }
+    if not rows or not required.issubset(rows[0]):
+        raise ValueError(
+            "Local-point manifest lacks required columns: "
+            + ", ".join(sorted(required))
+        )
+
+    samples: dict[str, LocalPointSample] = {}
+    for row in rows:
+        site_id = str(row["site_id"]).strip()
+        if not site_id or site_id in samples:
+            raise ValueError(f"Invalid or duplicate local-point site_id: {site_id}")
+        path = Path(str(row["path"]))
+        if not path.is_absolute():
+            path = manifest.parent / path
+        path = path.resolve()
+        if not path.is_file():
+            raise ValueError(f"Local-point file does not exist: {path}")
+        actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+        expected_sha256 = str(row["file_sha256"]).strip().lower()
+        if actual_sha256 != expected_sha256:
+            raise ValueError(f"Local-point file checksum mismatch: {path}")
+
+        value = read_local_point_file(path)
+        coordinates = value.get("coordinates")
+        if not isinstance(coordinates, list) or not coordinates:
+            raise ValueError(f"Local-point file has no coordinates: {path}")
+        parsed_coordinates: list[tuple[float, float]] = []
+        for index, coordinate in enumerate(coordinates, start=1):
+            if not isinstance(coordinate, list) or len(coordinate) != 2:
+                raise ValueError(f"Invalid coordinate {index} in {path}")
+            try:
+                longitude, latitude = map(float, coordinate)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid coordinate {index} in {path}") from exc
+            if (
+                not math.isfinite(longitude)
+                or not math.isfinite(latitude)
+                or not -180 <= longitude <= 180
+                or not -90 <= latitude <= 90
+            ):
+                raise ValueError(f"Invalid coordinate {index} in {path}")
+            parsed_coordinates.append((longitude, latitude))
+        if len(set(parsed_coordinates)) != len(parsed_coordinates):
+            raise ValueError(f"Duplicate coordinates in {path}")
+
+        sample_n = int(row["sample_n"])
+        sampling_seed = int(row["sampling_seed"])
+        if len(parsed_coordinates) != sample_n:
+            raise ValueError(
+                f"Local-point file contains {len(parsed_coordinates)}/{sample_n} "
+                f"points: {path}"
+            )
+        if str(value.get("site_id", "")) != site_id:
+            raise ValueError(f"Local-point site_id mismatch: {path}")
+        if int(value.get("requested_sample_n", -1)) != sample_n:
+            raise ValueError(f"Local-point sample count mismatch: {path}")
+        if int(value.get("sampling_seed", -1)) != sampling_seed:
+            raise ValueError(f"Local-point seed mismatch: {path}")
+        sampling_crs = str(row["sampling_crs"])
+        if value.get("sampling_crs") != sampling_crs or sampling_crs != "EPSG:6933":
+            raise ValueError(f"Local-point sampling CRS mismatch: {path}")
+        bounds = (
+            min(point[0] for point in parsed_coordinates),
+            min(point[1] for point in parsed_coordinates),
+            max(point[0] for point in parsed_coordinates),
+            max(point[1] for point in parsed_coordinates),
+        )
+        file_bounds = tuple(float(item) for item in value.get("bounds", []))
+        if len(file_bounds) != 4 or any(
+            abs(actual - expected) > 1e-7
+            for actual, expected in zip(bounds, file_bounds)
+        ):
+            raise ValueError(f"Local-point bounds mismatch: {path}")
+        polygon_area_km2 = float(row["polygon_area_km2"])
+        if not math.isfinite(polygon_area_km2) or polygon_area_km2 <= 0:
+            raise ValueError(f"Invalid local-point polygon area: {path}")
+        if abs(float(value.get("polygon_area_km2", 0)) - polygon_area_km2) > max(
+            1e-6, polygon_area_km2 * 1e-9
+        ):
+            raise ValueError(f"Local-point polygon area mismatch: {path}")
+        source_geometry_sha256 = str(row["source_geometry_sha256"]).lower()
+        if value.get("source_geometry_sha256") != source_geometry_sha256:
+            raise ValueError(f"Local-point source-geometry checksum mismatch: {path}")
+        samples[site_id] = LocalPointSample(
+            site_id=site_id,
+            path=path,
+            file_sha256=actual_sha256,
+            sample_n=sample_n,
+            sampling_seed=sampling_seed,
+            sampling_crs=sampling_crs,
+            polygon_area_km2=polygon_area_km2,
+            source_geometry_sha256=source_geometry_sha256,
+            bounds=bounds,
+        )
+    return samples
+
+
+def attach_local_point_samples(
+    plans: Iterable[TaskPlan],
+    samples: dict[str, LocalPointSample],
+) -> list[TaskPlan]:
+    attached: list[TaskPlan] = []
+    for plan in plans:
+        sample = samples.get(plan.site.site_id)
+        if sample is not None:
+            if plan.method != "sample":
+                raise ValueError(
+                    f"Local points were supplied for exact site {plan.site.site_id}."
+                )
+            if sample.sample_n != plan.sample_points:
+                raise ValueError(
+                    f"Local-point count for {plan.site.site_id} is "
+                    f"{sample.sample_n:,}; expected {plan.sample_points:,}."
+                )
+            if sample.sampling_seed != plan.sampling_seed:
+                raise ValueError(f"Local-point seed mismatch for {plan.site.site_id}.")
+            relative_area_error = abs(
+                sample.polygon_area_km2 - plan.site.area_km2
+            ) / plan.site.area_km2
+            if relative_area_error > 0.001:
+                raise ValueError(
+                    f"Local-point area differs by {100 * relative_area_error:.3f}% "
+                    f"for {plan.site.site_id}."
+                )
+            plan = replace(plan, local_point_sample=sample)
+        attached.append(plan)
+    return attached
+
+
 def safe_asset_part(value: str, maximum: int = 38) -> str:
     cleaned = ASSET_PART_PATTERN.sub("_", value.lower()).strip("_-")
     if not cleaned:
@@ -222,6 +392,16 @@ def stable_seed(site_id: str) -> int:
     return int(hashlib.sha256(site_id.encode("utf-8")).hexdigest()[:8], 16) % (
         2**31 - 2
     ) + 1
+
+
+def method_code(method: str, sample_points: int) -> str:
+    if method == "exact":
+        return "x"
+    if sample_points % 1_000_000 == 0:
+        return f"lps{sample_points // 1_000_000}m"
+    if sample_points % 1_000 == 0:
+        return f"lps{sample_points // 1_000}k"
+    return f"lps{sample_points}"
 
 
 # ---- Task planning ----
@@ -279,7 +459,7 @@ def plan_tasks(
                 f"{effective_work:,.0f} pixel-band-time evaluations exceed the "
                 f"{MAX_EFFECTIVE_PIXELS_PER_TASK:,} hard ceiling."
             )
-        short_method = "x" if selected_method == "exact" else "s"
+        short_method = method_code(selected_method, sample_points)
         site_hash = hashlib.sha256(site.site_id.encode("utf-8")).hexdigest()[:10]
         site_part = safe_asset_part(site.site_id)
         description = f"glcsafe_{short_method}_{run_label}_{site_part}_{site_hash}"
@@ -323,6 +503,16 @@ def launch_batch(missing: list[TaskPlan], maximum: int) -> list[TaskPlan]:
 
 
 def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
+    plans = list(plans)
+    missing_samples = [
+        plan.site.site_id
+        for plan in plans
+        if plan.method == "sample" and plan.local_point_sample is None
+    ]
+    if missing_samples:
+        raise ValueError(
+            "Sampled tasks lack local point files: " + ", ".join(missing_samples)
+        )
     exact = [
         {
             "description": plan.description,
@@ -336,6 +526,17 @@ def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
             "years": list(YEARS),
             "native_scale_m": NATIVE_SCALE_M,
             "source_collections": [FIVE_YEAR_COLLECTION, ANNUAL_COLLECTION],
+            "sampler_version": SAMPLER_VERSION if plan.method == "sample" else None,
+            "local_point_file_sha256": (
+                plan.local_point_sample.file_sha256
+                if plan.local_point_sample is not None
+                else None
+            ),
+            "source_geometry_sha256": (
+                plan.local_point_sample.source_geometry_sha256
+                if plan.local_point_sample is not None
+                else None
+            ),
         }
         for plan in plans
     ]
@@ -466,7 +667,7 @@ def base_output_properties(plan: TaskPlan, year: int) -> dict[str, Any]:
         "extraction_method": (
             "native_30m_exact"
             if plan.method == "exact"
-            else "deterministic_point_sample"
+            else f"deterministic_{SAMPLER_VERSION}"
         ),
         "polygon_area_m2": plan.site.area_km2 * 1_000_000,
         "native_pixel_estimate": plan.native_pixel_estimate,
@@ -478,6 +679,16 @@ def base_output_properties(plan: TaskPlan, year: int) -> dict[str, Any]:
             "glc_simplification_area_error_pct"
         ),
     }
+    if plan.local_point_sample is not None:
+        result.update(
+            {
+                "local_point_file_sha256": plan.local_point_sample.file_sha256,
+                "local_point_source_geometry_sha256": (
+                    plan.local_point_sample.source_geometry_sha256
+                ),
+                "local_point_sampling_crs": plan.local_point_sample.sampling_crs,
+            }
+        )
     return {key: value for key, value in result.items() if value is not None}
 
 
@@ -537,25 +748,36 @@ def build_exact_export(plan: TaskPlan) -> Any:
 
 
 def build_sample_export(plan: TaskPlan) -> Any:
-    feature = ee.Feature(plan.site.feature)
-    geometry = feature.geometry()
-    image = glc_multiband_image(geometry)
-    points = ee.FeatureCollection.randomPoints(
-        geometry, plan.sample_points, plan.sampling_seed, 1
+    local_sample = plan.local_point_sample
+    if local_sample is None:
+        raise ValueError(f"No local point sample for {plan.site.site_id}.")
+    value = read_local_point_file(local_sample.path)
+    coordinates = ee.List(value["coordinates"])
+
+    def point_feature(coordinate: Any) -> Any:
+        return ee.Feature(ee.Geometry.Point(ee.List(coordinate)))
+
+    points = ee.FeatureCollection(coordinates.map(point_feature))
+    bounds = ee.Geometry.Rectangle(
+        list(local_sample.bounds), proj="EPSG:4326", geodesic=False
+    )
+    image = glc_multiband_image(bounds)
+    samples = image.unmask(-999).sampleRegions(
+        collection=points,
+        properties=[],
+        scale=NATIVE_SCALE_M,
+        tileScale=4,
+        geometries=False,
     )
     polygon_area_m2 = ee.Number(plan.site.area_km2 * 1_000_000)
     yearly_tables = []
     for year in YEARS:
-        samples = image.select(str(year)).rename("land_cover").sampleRegions(
-            collection=points,
-            properties=[],
-            scale=NATIVE_SCALE_M,
-            tileScale=4,
-            geometries=False,
+        histogram = ee.Dictionary(samples.aggregate_histogram(str(year)))
+        missing_n = ee.Number(
+            ee.Algorithms.If(histogram.contains("-999"), histogram.get("-999"), 0)
         )
-        sample_n = samples.size()
-        safe_sample_n = ee.Number(sample_n).max(1)
-        histogram = ee.Dictionary(samples.aggregate_histogram("land_cover"))
+        sample_n = ee.Number(samples.size()).subtract(missing_n)
+        safe_sample_n = sample_n.max(1)
         base = ee.Dictionary(base_output_properties(plan, year))
 
         def one_class(class_id: Any) -> Any:
@@ -614,9 +836,17 @@ def preflight_dimensions(plans: list[TaskPlan]) -> dict[str, Any]:
     if len(methods) != 1:
         raise ValueError("A preflight receipt cannot mix exact and sampled tasks.")
     method = plans[0].method
+    sample_sizes = {plan.sample_points for plan in plans}
+    if len(sample_sizes) != 1:
+        raise ValueError("A preflight receipt cannot mix sample sizes.")
+    sample_points = plans[0].sample_points
+    short_method = method_code(method, sample_points)
+    workflow = f"glc_fcs30d_{method}"
+    if method == "sample":
+        workflow = f"{workflow}_{sample_points}"
     return {
-        "workflow": f"glc_fcs30d_{method}",
-        "description_prefix": f"glcsafe_{'x' if method == 'exact' else 's'}_",
+        "workflow": workflow,
+        "description_prefix": f"glcsafe_{short_method}_",
         "task_count": len(plans),
         "site_count": len(plans),
         "max_area_km2": max(plan.site.area_km2 for plan in plans),
@@ -678,10 +908,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--method", choices=("auto", "exact", "sample"), default="auto")
     parser.add_argument("--sample-points", type=int, default=DEFAULT_SAMPLE_POINTS)
     parser.add_argument(
+        "--local-point-manifest",
+        type=Path,
+        help="Manifest created by build_local_glc_sample_points.R.",
+    )
+    parser.add_argument(
         "--exact-max-work",
         type=float,
-        default=DEFAULT_EXACT_MAX_WORK,
-        help="Maximum pixel x date work for auto-selected exact extraction.",
+        help=(
+            "Maximum pixel x date work for auto-selected exact extraction; "
+            "defaults to SAMPLE_POINTS x 26 dates."
+        ),
     )
     parser.add_argument(
         "--site-id",
@@ -699,6 +936,8 @@ def parse_args() -> argparse.Namespace:
         parser.error(f"--max-new-tasks must be 1-{MAX_TASKS_PER_LAUNCH}.")
     if args.expected_site_count is not None and args.expected_site_count < 1:
         parser.error("--expected-site-count must be positive.")
+    if args.exact_max_work is None:
+        args.exact_max_work = args.sample_points * len(YEARS)
     args.manifest = args.manifest or args.run_root / "payload_manifest.csv"
     args.output_folder = args.output_folder or (
         f"projects/{args.project}/assets/glc_fcs30d_safe_{args.run_label}"
@@ -729,6 +968,12 @@ def main() -> None:
         run_label=args.run_label,
         output_folder=args.output_folder,
     )
+    local_samples = (
+        load_local_point_samples(args.local_point_manifest)
+        if args.local_point_manifest is not None
+        else {}
+    )
+    plans = attach_local_point_samples(plans, local_samples)
 
     ee.Initialize(project=args.project)
     active = active_descriptions()
@@ -758,24 +1003,33 @@ def main() -> None:
         f"{len(underway)} active, {len(missing)} missing."
     )
     if launch:
-        # The preflight command and the submitted graph must use the same
-        # server-verified dimensions, so verify before printing the receipt
-        # command rather than changing the fingerprint at submission time.
-        verified_sites = {
-            plan.site.site_id: verify_site_geometry(plan.site) for plan in launch
-        }
-        verified_launch = plan_tasks(
-            sites=[verified_sites[plan.site.site_id] for plan in launch],
-            method=launch[0].method,
-            sample_points=args.sample_points,
-            exact_max_work=args.exact_max_work,
-            run_label=args.run_label,
-            output_folder=args.output_folder,
-        )
-        verified_by_description = {
-            plan.description: plan for plan in verified_launch
-        }
-        launch = [verified_by_description[plan.description] for plan in launch]
+        missing_local_points = [
+            plan.site.site_id
+            for plan in launch
+            if plan.method == "sample" and plan.local_point_sample is None
+        ]
+        if missing_local_points:
+            raise RuntimeError(
+                "Selected sampled tasks lack local point files: "
+                + ", ".join(missing_local_points)
+                + ". Build them with build_local_glc_sample_points.R."
+            )
+        verified_launch: list[TaskPlan] = []
+        for plan in launch:
+            if plan.method == "sample":
+                verified_launch.append(plan)
+                continue
+            verified_site = verify_site_geometry(plan.site)
+            verified_plan = plan_tasks(
+                sites=[verified_site],
+                method="exact",
+                sample_points=args.sample_points,
+                exact_max_work=args.exact_max_work,
+                run_label=args.run_label,
+                output_folder=args.output_folder,
+            )[0]
+            verified_launch.append(verified_plan)
+        launch = verified_launch
         for plan in launch:
             print(
                 f"  {plan.description}: {plan.method}, {plan.site.area_km2:,.1f} km2, "

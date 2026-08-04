@@ -27,13 +27,60 @@ cli_boolean <- function(args, name, default = FALSE) {
   value %in% c("true", "yes", "1")
 }
 
+cli_integer <- function(args, name, default = NULL, minimum = NULL) {
+  value <- cli_value(args, name, default)
+  if (is.null(value)) return(NULL)
+  value <- suppressWarnings(as.integer(value))
+  if (is.na(value)) stop(name, " must be an integer.", call. = FALSE)
+  if (!is.null(minimum) && value < minimum) {
+    stop(name, " must be at least ", minimum, ".", call. = FALSE)
+  }
+  value
+}
+
+require_input_file <- function(path, label = "input file") {
+  if (!file.exists(path)) stop("Missing ", label, ": ", path, call. = FALSE)
+  normalizePath(path, mustWork = TRUE)
+}
+
+prepare_output_dir <- function(path, is_file = FALSE) {
+  directory <- if (is_file) dirname(path) else path
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  invisible(normalizePath(directory, mustWork = TRUE))
+}
+
+assert_required_columns <- function(data, columns, label = "table") {
+  missing <- setdiff(columns, names(data))
+  if (length(missing)) {
+    stop(
+      label, " is missing required columns: ",
+      paste(missing, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  invisible(data)
+}
+
+silica_find_repo_root <- function(start = getwd()) {
+  current <- normalizePath(start, mustWork = TRUE)
+  repeat {
+    if (dir.exists(file.path(current, ".git"))) return(current)
+    parent <- dirname(current)
+    if (identical(parent, current)) {
+      stop("Could not locate the repository root from ", start, ".", call. = FALSE)
+    }
+    current <- parent
+  }
+}
+
 read_workflow_table <- function(path) {
   if (!file.exists(path)) stop("Missing input table: ", path, call. = FALSE)
-  separator <- if (tolower(tools::file_ext(path)) == "csv") "," else "\t"
+  is_csv <- tolower(tools::file_ext(path)) == "csv"
+  separator <- if (is_csv) "," else "\t"
   read.delim(
     path,
     sep = separator,
-    quote = "",
+    quote = if (is_csv) "\"" else "",
     comment.char = "",
     stringsAsFactors = FALSE,
     check.names = FALSE
