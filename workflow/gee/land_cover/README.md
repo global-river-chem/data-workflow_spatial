@@ -1,18 +1,16 @@
 # GLC-FCS30D land-cover extraction
 
-This workflow extracts the 30 m GLC-FCS30D land-cover product for 1985, 1990,
-1995, and 2000–2022. Human-impact variables are handled by their own Earth
-Engine workflow; they are not part of the Aurora extraction.
+This workflow summarizes the 30 m GLC-FCS30D maps for 1985, 1990, 1995, and
+2000–2022. Human-impact variables use a separate Earth Engine workflow.
 
-Large watersheds cannot be scanned repeatedly at 30 m within a reasonable
-quota. The export script therefore uses exact pixels for smaller watersheds
-and a fixed, reproducible sample for larger ones. Both methods use the same
-source product and retain method and sample-size fields in the output.
+Small watersheds use every 30 m pixel. Large watersheds use a fixed set of
+points created locally. The same points are reused for every year, making the
+result reproducible while keeping Earth Engine work within a known limit.
 
 Do not rerun the older notebook or the archived `other_targets` queue. Those
-runs did not bound work by watershed size.
+runs did not limit work by watershed size.
 
-## Build watershed batches
+## Build watershed inputs
 
 ```bash
 Rscript workflow/gee/build_gee_vector_payloads.R \
@@ -25,11 +23,8 @@ Rscript workflow/gee/build_gee_vector_payloads.R \
   --expected-site-count SITE_COUNT
 ```
 
-## Plan and submit one task
-
-Generate fixed sample points locally before planning sampled tasks. Sampling is
-uniform in the EPSG:6933 equal-area projection and uses a stable site-specific
-seed. This step does not call Earth Engine.
+Create local sample points for watersheds that are too large for a full pixel
+count. This step does not use Earth Engine.
 
 ```bash
 Rscript workflow/gee/land_cover/build_local_glc_sample_points.R \
@@ -39,6 +34,13 @@ Rscript workflow/gee/land_cover/build_local_glc_sample_points.R \
   --exact-max-work 260000 \
   --expected-sampled-sites SAMPLED_SITE_COUNT
 ```
+
+## Export annual class areas
+
+Run without `--submit` first. The script prints the quota check required for
+the selected task. After that check succeeds, repeat the same command with
+`--submit --preflight-receipt PATH`. Start with one task and review its result
+and Earth Engine cost before allowing a larger batch.
 
 ```bash
 python3 workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py \
@@ -51,18 +53,46 @@ python3 workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py \
   --max-new-tasks 1
 ```
 
-This is a dry run. Follow the printed safety-check command, then repeat the
-same launch with `--submit --preflight-receipt PATH`. Review the first result
-and its Earth Engine cost before submitting more tasks.
+Each output records whether it used a full pixel count or local sample. Sampled
+outputs also record the point file and sample size used for that watershed.
 
-Sampled tasks reduce all 26 bands directly over one fixed multipoint geometry.
-They do not create a 10,000-row intermediate feature table or ask Earth Engine
-to construct random points within the watershed polygon. The task description,
-fingerprint, and output metadata include the reducer version, sampler version,
-and exact point-file checksum, so results and cost history from older graphs
-cannot be mixed into a new run.
+## Export only major land cover
 
-## Download and check the complete run
+Use the major-land script when an analysis only needs the dominant simplified
+class. It calculates that result in Earth Engine, so annual class tables do not
+need to be downloaded first.
+
+The calculation matches the 1900–2022 harmonized record. The 1985 map
+represents 88 years, the 1990 and 1995 maps represent five years each, the 2000
+map represents three years, and each 2001–2022 map represents one year. Source
+classes are then combined with the simplified land-cover crosswalk. Classes 0
+and 184 are not candidates for major land cover, but they remain in the yearly
+total used to calculate fractions.
+
+If classes tie for the largest weighted fraction, the export keeps every tied
+class and marks the tie. It does not choose one arbitrarily.
+
+Use a run label reserved for major-land results, such as
+`major_land_RELEASE_NAME`. This keeps annual and major-land assets distinct
+while preserving the task names used by the current run.
+
+```bash
+python3 workflow/gee/land_cover/run_safe_glc_major_land_exports.py \
+  --manifest PATH/TO/payload_manifest.csv \
+  --local-point-manifest PATH/TO/glc-local-points/point_sample_manifest.csv \
+  --project PROJECT \
+  --run-label major_land_RELEASE_NAME \
+  --method auto \
+  --expected-site-count SITE_COUNT \
+  --max-new-tasks 1
+```
+
+## Check and download results
+
+Both consolidation scripts report completed and missing assets without
+downloading anything. Add `--download` only after every expected asset exists.
+
+Annual class areas:
 
 ```bash
 Rscript workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R \
@@ -73,6 +103,17 @@ Rscript workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R \
   --expected-site-count SITE_COUNT
 ```
 
-Add `--download` only after the status check reports no missing assets. The
-combined file retains the land-cover method, sample count, and uncertainty
-fields needed for review.
+Major land cover:
+
+```bash
+Rscript workflow/gee/land_cover/consolidate_safe_glc_major_land_exports.R \
+  --manifest PATH/TO/payload_manifest.csv \
+  --project PROJECT \
+  --run-label major_land_RELEASE_NAME \
+  --method auto \
+  --expected-site-count SITE_COUNT
+```
+
+The consolidators apply the rules in `shared_watershed_aliases.csv` after the
+downloaded rows pass validation. The current rule copies the complete accepted
+S65B watershed result to S65C. It does not divide the result between sites.

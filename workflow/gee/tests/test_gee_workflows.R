@@ -2,6 +2,7 @@
 
 source("workflow/gee/gee_quota_preflight.R")
 source("workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R")
+source("workflow/gee/land_cover/consolidate_safe_glc_major_land_exports.R")
 
 expect_error <- function(expression) {
   failed <- FALSE
@@ -221,6 +222,117 @@ sample_plan$sample_points <- 10000L
 sample_qa <- glc_validate_asset_rows(sample_rows, sample_plan)
 stopifnot(sample_qa$minimum_sample_n == 10000)
 
+### Major-land validation
+
+major_plan <- list(
+  asset_id = "projects/test/assets/test_major_land",
+  site = list(site_id = "test_site", area_km2 = 1),
+  method = "exact",
+  sample_points = 0L
+)
+major_row <- normalize_major_row(list(
+  site_id = "test_site",
+  major_land = "Forest",
+  major_land_mean_fraction = 0.6,
+  major_land_tie_count = 1,
+  major_land_tie_flag = "no",
+  total_temporal_weight = 123,
+  valid_temporal_weight = 123,
+  extraction_method = "native_30m_exact"
+))
+major_qa <- validate_major_rows(list(major_row), major_plan)
+stopifnot(identical(major_qa$major_land, "Forest"))
+stopifnot(major_qa$valid_temporal_weight == 123)
+
+tied_rows <- lapply(c("Forest", "Cropland"), function(major_land) {
+  row <- major_row
+  row$major_land <- major_land
+  row$major_land_mean_fraction <- 0.4
+  row$major_land_tie_count <- 2L
+  row$major_land_tie_flag <- "yes"
+  row
+})
+tied_qa <- validate_major_rows(tied_rows, major_plan)
+stopifnot(tied_qa$rows == 2L)
+
+invalid_major_row <- major_row
+invalid_major_row$major_land_mean_fraction <- 1.1
+expect_error(validate_major_rows(list(invalid_major_row), major_plan))
+
+### Shared watersheds
+
+shared_source <- data.frame(
+  site_id = rep("krr__s_65bc__s65b", 2),
+  LTER = rep("KRR", 2),
+  Stream_Name = rep("S65B", 2),
+  Shapefile_Name = rep("s_65bc", 2),
+  Year = c(1985L, 1990L),
+  LC_ID = c(50L, 10L),
+  Area_m2 = c(750000, 250000),
+  stringsAsFactors = FALSE
+)
+shared_result <- add_shared_watershed_aliases(
+  shared_source,
+  glc_default_alias_file
+)
+source_rows <- shared_result$Stream_Name == "S65B"
+alias_rows <- shared_result$Stream_Name == "S65C"
+stopifnot(sum(source_rows) == 2L)
+stopifnot(sum(alias_rows) == 2L)
+stopifnot(all(!shared_result$watershed_alias_flag[source_rows]))
+stopifnot(all(shared_result$watershed_alias_flag[alias_rows]))
+stopifnot(all(
+  shared_result$site_id[alias_rows] == "krr__s_65bc__s65c"
+))
+stopifnot(isTRUE(all.equal(
+  shared_result$Area_m2[source_rows],
+  shared_result$Area_m2[alias_rows],
+  check.attributes = FALSE
+)))
+
+existing_alias <- rbind(
+  shared_source,
+  transform(shared_source, Stream_Name = "S65C")
+)
+expect_error(add_shared_watershed_aliases(
+  existing_alias,
+  glc_default_alias_file
+))
+
+### Major-land calculation settings
+
+python_check <- paste(
+  "from pathlib import Path",
+  "import sys",
+  paste0(
+    "sys.path.insert(0, str(Path.cwd() / ",
+    "'workflow/gee/land_cover'))"
+  ),
+  "import run_safe_glc_fcs30d_exports as annual",
+  "import run_safe_glc_major_land_exports as major",
+  "assert sum(major.YEAR_WEIGHTS.values()) == 123",
+  paste0(
+    "assert set(major.MAPPED_CLASS_IDS) | ",
+    "set(major.NON_CANDIDATE_CLASS_IDS) == set(annual.GLC_CLASSES)"
+  ),
+  paste0(
+    "assert not set(major.MAPPED_CLASS_IDS) & ",
+    "set(major.NON_CANDIDATE_CLASS_IDS)"
+  ),
+  paste0(
+    "assert annual.workload_fingerprint([], 'annual_classes') != ",
+    "annual.workload_fingerprint([], 'major_land')"
+  ),
+  sep = "; "
+)
+python_status <- system2(
+  "python3",
+  c("-c", shQuote(python_check)),
+  stdout = TRUE,
+  stderr = TRUE
+)
+stopifnot(is.null(attr(python_status, "status")))
+
 ### Language boundary
 
 local_python <- c(
@@ -236,9 +348,27 @@ gee_python <- list.files(
   recursive = TRUE,
   full.names = TRUE
 )
-stopifnot(length(gee_python) == 3L)
-stopifnot(all(vapply(gee_python, function(path) {
+expected_gee_python <- c(
+  "workflow/gee/era5_land/run_safe_era5_land_exports.py",
+  "workflow/gee/human_impacts/run_missing_site_exports.py",
+  "workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py",
+  "workflow/gee/land_cover/run_safe_glc_major_land_exports.py"
+)
+stopifnot(setequal(gee_python, expected_gee_python))
+direct_gee_python <- setdiff(
+  gee_python,
+  "workflow/gee/land_cover/run_safe_glc_major_land_exports.py"
+)
+stopifnot(all(vapply(direct_gee_python, function(path) {
   any(grepl("^\\s*(import ee|from ee)", readLines(path, warn = FALSE)))
 }, logical(1))))
+major_python <- readLines(
+  "workflow/gee/land_cover/run_safe_glc_major_land_exports.py",
+  warn = FALSE
+)
+stopifnot(any(grepl(
+  "^import run_safe_glc_fcs30d_exports as glc$",
+  major_python
+)))
 
 cat("All R GEE workflow tests passed\n")

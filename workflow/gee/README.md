@@ -59,7 +59,9 @@ Engine computations.
 | Build local GLC sample points | `land_cover/build_local_glc_sample_points.R` |
 | Monthly or weekly ERA5 summaries | `era5_land/aggregate_daily_era5_land.R` |
 | GLC-FCS30D land cover | `land_cover/run_safe_glc_fcs30d_exports.py` |
+| GLC-FCS30D major land cover | `land_cover/run_safe_glc_major_land_exports.py` |
 | Download and check GLC results | `land_cover/consolidate_safe_glc_fcs30d_exports.R` |
+| Download and check major land cover | `land_cover/consolidate_safe_glc_major_land_exports.R` |
 | Human impacts for missing sites | `human_impacts/run_missing_site_exports.py` |
 | Organize completed Drive exports | `post_export/organize_gee_exports_in_drive.R` |
 | Compare annual exports with an earlier run | `post_run_qa/run_old_vs_gee_annual_comparison_qa.R` |

@@ -1,10 +1,10 @@
-"""Safely export all 26 GLC-FCS30D land-class dates by watershed.
+"""Export all 26 GLC-FCS30D land-class dates by watershed.
 
 Each task covers one watershed and all configured GLC-FCS30D dates. Small
 watersheds use an exact native-30 m pixel-area census. Large watersheds use a
 deterministic fixed-size point sample of the same 30 m product, which prevents
-task cost from growing with watershed area. Submission is fail-closed behind
-an exact, one-use Earth Engine quota-preflight receipt.
+task cost from growing with watershed area. A current, one-use quota approval
+is required before any Earth Engine task is submitted.
 """
 
 from __future__ import annotations
@@ -22,12 +22,12 @@ import sys
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 
 try:
     import ee
-except ImportError:  # Keep pure planning functions importable in tests.
+except ImportError:  # Keep pure planning functions importable in tests
     ee = None
 
 
@@ -85,10 +85,10 @@ GLC_CLASSES = (
 )
 METADATA_PROPERTIES = ("site_id", "LTER", "Stream_Name", "Shapefile_Name")
 NATIVE_SCALE_M = 30.0
+EXACT_PIXEL_BUFFER_FACTOR = 3.0
 DEFAULT_SAMPLE_POINTS = 100_000
-# In auto mode exact work is used only when it is no larger than sampling.
-# Consequently every default task is bounded to the same 2.6 million
-# pixel/point x date observations.
+# Auto mode uses every pixel only when that is no more work than sampling
+# Quota checks allow room for map-projection differences in exact tasks
 DEFAULT_EXACT_MAX_WORK = DEFAULT_SAMPLE_POINTS * len(YEARS)
 SAMPLER_VERSION = "local_equal_area_points_v1"
 SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
@@ -387,7 +387,7 @@ def safe_asset_part(value: str, maximum: int = 38) -> str:
 
 
 def stable_seed(site_id: str) -> int:
-    # Earth Engine expects a signed 32-bit seed; never return zero.
+    # Earth Engine expects a signed 32-bit seed; never return zero
     return int(hashlib.sha256(site_id.encode("utf-8")).hexdigest()[:8], 16) % (
         2**31 - 2
     ) + 1
@@ -451,7 +451,10 @@ def plan_tasks(
             exact_work=exact_work,
             exact_max_work=exact_max_work,
         )
-        effective_work = exact_work if selected_method == "exact" else sampled_work
+        if selected_method == "exact":
+            effective_work = exact_pixel_limit(native_pixels) * len(YEARS)
+        else:
+            effective_work = sampled_work
         if effective_work > MAX_EFFECTIVE_PIXELS_PER_TASK:
             raise ValueError(
                 f"Unsafe forced-{selected_method} plan for {site.site_id}: "
@@ -476,8 +479,8 @@ def plan_tasks(
                 effective_pixel_band_time=effective_work,
             )
         )
-    # Smoke-test the largest sampled watershed first. Once sampled work is done,
-    # test the largest exact task before allowing any smaller exact tasks.
+    # Try the largest sampled watershed first
+    # Once sampling is proven, try the largest exact watershed
     return sorted(
         plans,
         key=lambda plan: (
@@ -501,7 +504,10 @@ def launch_batch(missing: list[TaskPlan], maximum: int) -> list[TaskPlan]:
     return [plan for plan in missing if plan.method == first_method][:maximum]
 
 
-def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
+def workload_fingerprint(
+    plans: Iterable[TaskPlan],
+    result_kind: str = "annual_classes",
+) -> str:
     plans = list(plans)
     missing_samples = [
         plan.site.site_id
@@ -542,7 +548,7 @@ def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
         }
         for plan in plans
     ]
-    return canonical_sha256(exact)
+    return canonical_sha256({"result_kind": result_kind, "plans": exact})
 
 
 def sampling_standard_error(fraction: float, sample_count: int) -> float:
@@ -705,14 +711,19 @@ def lookup_from_grouped_area(groups: Any) -> Any:
     return ee.Dictionary(ee.List(groups).iterate(add_group, ee.Dictionary({})))
 
 
+def exact_pixel_limit(native_pixel_estimate: float) -> int:
+    return min(
+        MAX_EFFECTIVE_PIXELS_PER_TASK // len(YEARS),
+        math.ceil(native_pixel_estimate * EXACT_PIXEL_BUFFER_FACTOR) + 10_000,
+    )
+
+
 def build_exact_export(plan: TaskPlan) -> Any:
     feature = ee.Feature(plan.site.feature)
     geometry = feature.geometry()
+    output_geometry = geometry.centroid(maxError=1)
     image = glc_multiband_image(geometry)
-    maximum_pixels_per_date = min(
-        MAX_EFFECTIVE_PIXELS_PER_TASK,
-        math.ceil(plan.native_pixel_estimate * 1.10) + 10_000,
-    )
+    maximum_pixels_per_date = exact_pixel_limit(plan.native_pixel_estimate)
     yearly_tables = []
     for year in YEARS:
         land_cover = image.select(str(year)).rename("land_cover")
@@ -737,7 +748,7 @@ def build_exact_export(plan: TaskPlan) -> Any:
             key = class_number.format("%d")
             area = ee.Number(ee.Algorithms.If(lookup.contains(key), lookup.get(key), 0))
             return ee.Feature(
-                None,
+                output_geometry,
                 base.set("LC_ID", class_number)
                 .set("Area_m2", area)
                 .set("sample_count", -1)
@@ -756,6 +767,7 @@ def build_sample_export(plan: TaskPlan) -> Any:
         raise ValueError(f"No local point sample for {plan.site.site_id}.")
     value = read_local_point_file(local_sample.path)
     points = ee.Geometry.MultiPoint(value["coordinates"], "EPSG:4326")
+    output_geometry = ee.Geometry.Point(value["coordinates"][0], "EPSG:4326")
     image = glc_multiband_image(points)
     histograms = ee.Dictionary(
         image.unmask(-999).reduceRegion(
@@ -798,7 +810,7 @@ def build_sample_export(plan: TaskPlan) -> Any:
                 safe_sample_n
             ).sqrt()
             return ee.Feature(
-                None,
+                output_geometry,
                 base.set("LC_ID", class_number)
                 .set("Area_m2", fraction.multiply(polygon_area_m2))
                 .set("sample_count", count)
@@ -812,7 +824,11 @@ def build_sample_export(plan: TaskPlan) -> Any:
 
 
 def make_export_task(plan: TaskPlan) -> Any:
-    table = build_exact_export(plan) if plan.method == "exact" else build_sample_export(plan)
+    table = (
+        build_exact_export(plan)
+        if plan.method == "exact"
+        else build_sample_export(plan)
+    )
     return ee.batch.Export.table.toAsset(
         collection=table,
         description=plan.description,
@@ -820,9 +836,12 @@ def make_export_task(plan: TaskPlan) -> Any:
     )
 
 
-def validate_export_graph(plan: TaskPlan) -> int:
+def validate_export_graph(
+    plan: TaskPlan,
+    make_task: Callable[[TaskPlan], Any] = make_export_task,
+) -> int:
     """Serialize an unstarted export task and return its request size."""
-    task = make_export_task(plan)
+    task = make_task(plan)
     config = dict(task.config)
     config["expression"] = ee.serializer.encode(
         config["expression"], for_cloud_api=True
@@ -836,7 +855,10 @@ def validate_export_graph(plan: TaskPlan) -> int:
 # ---- Submission records ----
 
 
-def preflight_dimensions(plans: list[TaskPlan]) -> dict[str, Any]:
+def preflight_dimensions(
+    plans: list[TaskPlan],
+    result_kind: str = "annual_classes",
+) -> dict[str, Any]:
     if not plans:
         raise ValueError("No plans were supplied.")
     methods = {plan.method for plan in plans}
@@ -858,12 +880,17 @@ def preflight_dimensions(plans: list[TaskPlan]) -> dict[str, Any]:
         "site_count": len(plans),
         "max_area_km2": max(plan.site.area_km2 for plan in plans),
         "max_work": max(plan.effective_pixel_band_time for plan in plans),
-        "fingerprint": workload_fingerprint(plans),
+        "fingerprint": workload_fingerprint(plans, result_kind),
     }
 
 
-def preflight_command(project: str, plans: list[TaskPlan], receipt: Path) -> str:
-    dimensions = preflight_dimensions(plans)
+def preflight_command(
+    project: str,
+    plans: list[TaskPlan],
+    receipt: Path,
+    result_kind: str = "annual_classes",
+) -> str:
+    dimensions = preflight_dimensions(plans, result_kind)
     command = [
         "Rscript",
         str(HELPER_ROOT / "gee_quota_preflight.R"),
@@ -945,8 +972,8 @@ def consume_preflight_receipt(
 # ---- Command line ----
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+def parse_args(description: str | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=description or __doc__)
     parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
     parser.add_argument(
         "--manifest",
@@ -985,7 +1012,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
     if not LABEL_PATTERN.fullmatch(args.run_label):
-        parser.error("--run-label must contain lowercase letters, numbers, and underscores.")
+        parser.error(
+            "--run-label must contain lowercase letters, numbers, and underscores."
+        )
     if args.max_new_tasks < 1 or args.max_new_tasks > MAX_TASKS_PER_LAUNCH:
         parser.error(f"--max-new-tasks must be 1-{MAX_TASKS_PER_LAUNCH}.")
     if args.expected_site_count is not None and args.expected_site_count < 1:
@@ -999,8 +1028,13 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    args = parse_args()
+def main(
+    make_task: Callable[[TaskPlan], Any] = make_export_task,
+    description: str | None = None,
+    result_kind: str = "annual_classes",
+    status_label: str = "GLC",
+) -> None:
+    args = parse_args(description)
     require_earth_engine()
     sites = load_sites(args.manifest)
     if args.site_id:
@@ -1052,7 +1086,8 @@ def main() -> None:
         for method in ("sample", "exact")
     }
     print(
-        f"GLC targets: {len(plans)} sites ({counts_by_method['exact']} exact, "
+        f"{status_label} targets: {len(plans)} sites "
+        f"({counts_by_method['exact']} exact, "
         f"{counts_by_method['sample']} sampled); {len(complete)} complete, "
         f"{len(underway)} active, {len(missing)} missing."
     )
@@ -1094,14 +1129,21 @@ def main() -> None:
         )
         receipt_path = args.preflight_receipt or default_receipt
         print("Run this exact preflight command before submission:")
-        print(preflight_command(args.project, launch, receipt_path))
+        print(
+            preflight_command(
+                args.project,
+                launch,
+                receipt_path,
+                result_kind,
+            )
+        )
     else:
         print("No missing tasks remain.")
         return
 
     if not args.submit:
         for plan in launch:
-            graph_bytes = validate_export_graph(plan)
+            graph_bytes = validate_export_graph(plan, make_task)
             print(
                 f"Validated unstarted {plan.method} export graph: "
                 f"{graph_bytes:,} request bytes."
@@ -1111,7 +1153,7 @@ def main() -> None:
     if args.preflight_receipt is None:
         raise RuntimeError("--submit requires --preflight-receipt.")
 
-    dimensions = preflight_dimensions(launch)
+    dimensions = preflight_dimensions(launch, result_kind)
     consume_preflight_receipt(
         args.preflight_receipt,
         project=args.project,
@@ -1128,7 +1170,7 @@ def main() -> None:
     )
     ensure_folder(args.output_folder)
     for plan in launch:
-        task = make_export_task(plan)
+        task = make_task(plan)
         task.start()
         print(f"Submitted {plan.description} -> {plan.asset_id}")
 
@@ -1137,5 +1179,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"SAFE GLC EXPORT ERROR: {exc}", file=sys.stderr)
+        print(f"GLC export failed: {exc}", file=sys.stderr)
         raise
