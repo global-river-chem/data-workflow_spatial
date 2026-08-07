@@ -222,6 +222,49 @@ sample_plan$sample_points <- 10000L
 sample_qa <- glc_validate_asset_rows(sample_rows, sample_plan)
 stopifnot(sample_qa$minimum_sample_n == 10000)
 
+strict_sample_plan <- sample_plan
+strict_sample_plan$sample_points <- 10200L
+expect_error(glc_validate_asset_rows(sample_rows, strict_sample_plan))
+
+relaxed_sample_plan <- strict_sample_plan
+relaxed_sample_plan$minimum_sample_fraction <- 0.98
+relaxed_sample_qa <- glc_validate_asset_rows(sample_rows, relaxed_sample_plan)
+stopifnot(relaxed_sample_qa$minimum_sample_n == 10000)
+
+planned_sample <- glc_plan_tasks(
+  sites = list(list(site_id = "test_site", area_km2 = 1)),
+  method = "sample",
+  sample_points = 10000L,
+  exact_max_work = 260000,
+  run_label = "test",
+  output_folder = "projects/test/assets/test",
+  minimum_sample_fraction = 0.95
+)
+stopifnot(planned_sample[[1]]$minimum_sample_fraction == 0.95)
+expect_error(glc_plan_tasks(
+  sites = list(list(site_id = "test_site", area_km2 = 1)),
+  method = "sample",
+  sample_points = 10000L,
+  exact_max_work = 260000,
+  run_label = "test",
+  output_folder = "projects/test/assets/test",
+  minimum_sample_fraction = 0
+))
+
+output_args <- glc_parse_args(c("--output-folder", "remote-assets"))
+default_output <- glc_output_path(
+  output_args,
+  "local-output",
+  "combined",
+  "test"
+)
+stopifnot(default_output == "local-output/combined_test.csv")
+custom_output_args <- glc_parse_args(c("--output", "chosen.csv"))
+stopifnot(
+  glc_output_path(custom_output_args, "unused", "unused", "unused") ==
+    "chosen.csv"
+)
+
 ### Major-land validation
 
 major_plan <- list(

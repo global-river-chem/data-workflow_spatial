@@ -92,6 +92,10 @@ python3 workflow/gee/land_cover/run_safe_glc_major_land_exports.py \
 Both consolidation scripts report completed and missing assets without
 downloading anything. Add `--download` only after every expected asset exists.
 
+Annual sampled output must contain at least 99% of the requested points. After
+review, a different cutoff can be set with
+`--minimum-sample-fraction FRACTION`.
+
 Annual class areas:
 
 ```bash

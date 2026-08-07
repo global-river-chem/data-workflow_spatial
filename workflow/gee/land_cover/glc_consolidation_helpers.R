@@ -164,13 +164,26 @@ glc_filter_sites <- function(sites, site_ids = NULL) {
   Filter(function(site) site$site_id %in% requested, sites)
 }
 
+glc_check_sample_fraction <- function(value) {
+  value <- as.numeric(value)
+  invalid <- length(value) != 1L ||
+    !is.finite(value) ||
+    value <= 0 ||
+    value > 1
+  if (invalid) {
+    stop("Minimum sample fraction must be greater than zero and at most one")
+  }
+  value
+}
+
 glc_plan_tasks <- function(
   sites,
   method,
   sample_points,
   exact_max_work,
   run_label,
-  output_folder
+  output_folder,
+  minimum_sample_fraction = 0.99
 ) {
   if (!method %in% c("auto", "exact", "sample")) {
     stop("Method must be auto, exact, or sample")
@@ -178,6 +191,9 @@ glc_plan_tasks <- function(
   if (sample_points < 10000L) {
     stop("At least 10,000 sample points are required")
   }
+  minimum_sample_fraction <- glc_check_sample_fraction(
+    minimum_sample_fraction
+  )
 
   plans <- lapply(sites, function(site) {
     native_pixels <- site$area_km2 * 1000000 / (glc_scale_m^2)
@@ -223,7 +239,8 @@ glc_plan_tasks <- function(
         exact_work
       } else {
         sample_points * length(glc_years)
-      }
+      },
+      minimum_sample_fraction = minimum_sample_fraction
     )
   })
   order_index <- order(
@@ -254,6 +271,13 @@ glc_rows_to_data_frame <- function(rows, columns) {
   output[, columns, drop = FALSE]
 }
 
+glc_output_path <- function(args, run_root, output_stem, run_label) {
+  args[["output"]] %||% file.path(
+    run_root,
+    paste0(output_stem, "_", run_label, ".csv")
+  )
+}
+
 run_glc_consolidation <- function(settings, args) {
   project <- args$project %||% "silica-synthesis"
   run_label <- args$run_label %||% stop("Missing --run-label")
@@ -274,14 +298,19 @@ run_glc_consolidation <- function(settings, args) {
   exact_max_work <- as.numeric(
     args$exact_max_work %||% (sample_points * length(glc_years))
   )
+  minimum_sample_fraction <- glc_check_sample_fraction(
+    args$minimum_sample_fraction %||% 0.99
+  )
   expected_site_count <- if (is.null(args$expected_site_count)) {
     NULL
   } else {
     as.integer(args$expected_site_count)
   }
-  output <- args$output %||% file.path(
+  output <- glc_output_path(
+    args,
     run_root,
-    paste0(settings$output_stem, "_", run_label, ".csv")
+    settings$output_stem,
+    run_label
   )
 
   sites <- glc_filter_sites(glc_load_sites(manifest), args$site_ids)
@@ -296,7 +325,8 @@ run_glc_consolidation <- function(settings, args) {
     sample_points,
     exact_max_work,
     run_label,
-    output_folder
+    output_folder,
+    minimum_sample_fraction
   )
 
   token <- gee_access_token()

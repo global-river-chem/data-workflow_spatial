@@ -110,6 +110,9 @@ glc_validate_asset_rows <- function(rows, plan) {
 
   minimum_sample_n <- NULL
   maximum_fraction_error <- 0
+  minimum_sample_fraction <- glc_check_sample_fraction(
+    plan$minimum_sample_fraction %||% 0.99
+  )
   for (year in glc_years) {
     year_rows <- Filter(function(row) row$Year == year, rows)
     area_sum <- sum(vapply(year_rows, `[[`, numeric(1), "Area_m2"))
@@ -132,7 +135,7 @@ glc_validate_asset_rows <- function(rows, plan) {
       } else {
         min(minimum_sample_n, sample_n)
       }
-      if (sample_n < 0.99 * plan$sample_points) {
+      if (sample_n < minimum_sample_fraction * plan$sample_points) {
         stop("Too few classified samples for ", plan$site$site_id, ", ", year)
       }
       count_sum <- sum(vapply(
