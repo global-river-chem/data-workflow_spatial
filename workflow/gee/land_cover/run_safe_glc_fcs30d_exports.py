@@ -85,13 +85,14 @@ GLC_CLASSES = (
 )
 METADATA_PROPERTIES = ("site_id", "LTER", "Stream_Name", "Shapefile_Name")
 NATIVE_SCALE_M = 30.0
-EXACT_PIXEL_BUFFER_FACTOR = 3.0
+# High-latitude grids can need more reducer pixels than area alone implies
+EXACT_PIXEL_BUFFER_FACTOR = 20.0
 DEFAULT_SAMPLE_POINTS = 100_000
 # Auto mode uses every pixel only when that is no more work than sampling
 # Quota checks allow room for map-projection differences in exact tasks
 DEFAULT_EXACT_MAX_WORK = DEFAULT_SAMPLE_POINTS * len(YEARS)
 SAMPLER_VERSION = "local_equal_area_points_v1"
-SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
+SAMPLED_REDUCER_VERSION = "point_features_repeat_histogram_v3"
 DEFAULT_RUN_ROOT = Path("generated_outputs/gee/glc-fcs30d-safe")
 ACTIVE_STATES = {
     "READY",
@@ -647,21 +648,37 @@ def verify_site_geometry(site: Site) -> Site:
 
 
 def glc_multiband_image(geometry: Any) -> Any:
-    five_year = (
-        ee.ImageCollection(FIVE_YEAR_COLLECTION)
-        .filterBounds(geometry)
-        .select(["b1", "b2", "b3"])
-        .mosaic()
-        .rename(["1985", "1990", "1995"])
+    def mosaic_with_unclassified_fallback(
+        collection_id: str,
+        source_bands: list[str],
+        output_bands: list[str],
+    ) -> Any:
+        fallback = ee.Image.constant([0] * len(source_bands)).toByte().rename(
+            source_bands
+        )
+        source = (
+            ee.ImageCollection(collection_id)
+            .filterBounds(geometry)
+            .select(source_bands)
+        )
+        return (
+            ee.ImageCollection.fromImages([fallback])
+            .merge(source)
+            .mosaic()
+            .rename(output_bands)
+        )
+
+    five_year = mosaic_with_unclassified_fallback(
+        FIVE_YEAR_COLLECTION,
+        ["b1", "b2", "b3"],
+        ["1985", "1990", "1995"],
     )
     annual_source_bands = [f"b{index}" for index in range(1, 24)]
     annual_output_bands = [str(year) for year in range(2000, 2023)]
-    annual = (
-        ee.ImageCollection(ANNUAL_COLLECTION)
-        .filterBounds(geometry)
-        .select(annual_source_bands)
-        .mosaic()
-        .rename(annual_output_bands)
+    annual = mosaic_with_unclassified_fallback(
+        ANNUAL_COLLECTION,
+        annual_source_bands,
+        annual_output_bands,
     )
     return five_year.addBands(annual)
 
@@ -769,15 +786,29 @@ def build_sample_export(plan: TaskPlan) -> Any:
     points = ee.Geometry.MultiPoint(value["coordinates"], "EPSG:4326")
     output_geometry = ee.Geometry.Point(value["coordinates"][0], "EPSG:4326")
     image = glc_multiband_image(points)
-    histograms = ee.Dictionary(
-        image.unmask(-999).reduceRegion(
-            reducer=ee.Reducer.frequencyHistogram(),
-            geometry=points,
-            scale=NATIVE_SCALE_M,
-            bestEffort=False,
-            maxPixels=local_sample.sample_n * len(YEARS) + 10_000,
-            tileScale=4,
+    point_features = ee.FeatureCollection(
+        ee.List(points.coordinates()).map(
+            lambda coordinate: ee.Feature(
+                ee.Geometry.Point(coordinate, "EPSG:4326")
+            )
         )
+    )
+    band_names = ee.List([str(year) for year in YEARS])
+    samples = image.unmask(-999).sampleRegions(
+        collection=point_features,
+        scale=NATIVE_SCALE_M,
+        geometries=False,
+        tileScale=4,
+    )
+    histogram_list = ee.List(
+        samples.reduceColumns(
+            reducer=ee.Reducer.frequencyHistogram().repeat(len(YEARS)),
+            selectors=band_names,
+        ).get("histogram")
+    )
+    histograms = ee.Dictionary.fromLists(
+        band_names,
+        histogram_list,
     )
     polygon_area_m2 = ee.Number(plan.site.area_km2 * 1_000_000)
     yearly_tables = []
@@ -889,6 +920,7 @@ def preflight_command(
     plans: list[TaskPlan],
     receipt: Path,
     result_kind: str = "annual_classes",
+    monthly_stop_eecu_hours: float | None = None,
 ) -> str:
     dimensions = preflight_dimensions(plans, result_kind)
     command = [
@@ -919,6 +951,10 @@ def preflight_command(
         "--receipt",
         str(receipt),
     ]
+    if monthly_stop_eecu_hours is not None:
+        command.extend(
+            ["--monthly-stop-eecu-hours", str(monthly_stop_eecu_hours)]
+        )
     return shlex.join(command)
 
 
@@ -1008,6 +1044,7 @@ def parse_args(description: str | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--expected-site-count", type=int)
     parser.add_argument("--max-new-tasks", type=int, default=1)
+    parser.add_argument("--monthly-stop-eecu-hours", type=float)
     parser.add_argument("--preflight-receipt", type=Path)
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
@@ -1019,6 +1056,11 @@ def parse_args(description: str | None = None) -> argparse.Namespace:
         parser.error(f"--max-new-tasks must be 1-{MAX_TASKS_PER_LAUNCH}.")
     if args.expected_site_count is not None and args.expected_site_count < 1:
         parser.error("--expected-site-count must be positive.")
+    if (
+        args.monthly_stop_eecu_hours is not None
+        and args.monthly_stop_eecu_hours <= 0
+    ):
+        parser.error("--monthly-stop-eecu-hours must be positive.")
     if args.exact_max_work is None:
         args.exact_max_work = args.sample_points * len(YEARS)
     args.manifest = args.manifest or args.run_root / "payload_manifest.csv"
@@ -1135,6 +1177,7 @@ def main(
                 launch,
                 receipt_path,
                 result_kind,
+                args.monthly_stop_eecu_hours,
             )
         )
     else:

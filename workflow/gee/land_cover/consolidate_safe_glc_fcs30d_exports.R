@@ -42,6 +42,8 @@ glc_output_columns <- c(
   "glc_simplification_area_error_pct",
   glc_alias_columns
 )
+glc_sample_closure_tolerance <- 1e-6
+glc_exact_boundary_tolerance <- 0.01
 
 ### Annual output checks
 
@@ -110,6 +112,7 @@ glc_validate_asset_rows <- function(rows, plan) {
 
   minimum_sample_n <- NULL
   maximum_fraction_error <- 0
+  maximum_area_closure_error <- 0
   minimum_sample_fraction <- glc_check_sample_fraction(
     plan$minimum_sample_fraction %||% 0.99
   )
@@ -119,6 +122,25 @@ glc_validate_asset_rows <- function(rows, plan) {
     if (!is.finite(area_sum) || area_sum <= 0) {
       stop("Non-positive class area for ", plan$site$site_id, ", ", year)
     }
+    polygon_areas <- unique(vapply(
+      year_rows,
+      `[[`,
+      numeric(1),
+      "polygon_area_m2"
+    ))
+    if (
+      length(polygon_areas) != 1L ||
+        !is.finite(polygon_areas[[1]]) ||
+        polygon_areas[[1]] <= 0
+    ) {
+      stop("Invalid watershed area for ", plan$site$site_id, ", ", year)
+    }
+    polygon_area <- polygon_areas[[1]]
+    area_closure_error <- abs(area_sum - polygon_area) / polygon_area
+    maximum_area_closure_error <- max(
+      maximum_area_closure_error,
+      area_closure_error
+    )
     if (plan$method == "sample") {
       sample_sizes <- unique(vapply(
         year_rows,
@@ -162,14 +184,11 @@ glc_validate_asset_rows <- function(rows, plan) {
       if (fraction_error > 1e-6) {
         stop("Sample fractions do not sum to one")
       }
-      polygon_area <- year_rows[[1]]$polygon_area_m2
-      if (!isTRUE(all.equal(
-        area_sum,
-        polygon_area,
-        tolerance = 1e-6
-      ))) {
+      if (area_closure_error > glc_sample_closure_tolerance) {
         stop("Sampled class areas do not sum to the watershed area")
       }
+    } else if (area_closure_error > glc_exact_boundary_tolerance) {
+      stop("Exact class areas exceed the 1% raster-boundary limit")
     }
   }
   list(
@@ -177,7 +196,13 @@ glc_validate_asset_rows <- function(rows, plan) {
     method = plan$method,
     rows = length(rows),
     minimum_sample_n = minimum_sample_n,
-    maximum_fraction_sum_error = maximum_fraction_error
+    maximum_fraction_sum_error = maximum_fraction_error,
+    maximum_area_closure_relative_error = maximum_area_closure_error,
+    area_closure_relative_error_limit = if (plan$method == "sample") {
+      glc_sample_closure_tolerance
+    } else {
+      glc_exact_boundary_tolerance
+    }
   )
 }
 

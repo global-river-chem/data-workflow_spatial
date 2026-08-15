@@ -116,7 +116,9 @@ select_site_rows <- function(data, args) {
 
 independent_reference_area <- function(data) {
   area <- suppressWarnings(as.numeric(data$drainSqKm))
-  if ("Derived_DA_Unverified" %in% names(data)) {
+  if ("Drainage_Area_Verified" %in% names(data)) {
+    area[tolower(trimws(data$Drainage_Area_Verified)) != "yes"] <- NA_real_
+  } else if ("Derived_DA_Unverified" %in% names(data)) {
     area[tolower(trimws(data$Derived_DA_Unverified)) == "yes"] <- NA_real_
   }
   area

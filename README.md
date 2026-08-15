@@ -16,9 +16,8 @@ requests and local MODIS work stay in `lterwg-silica-spatial`.
 - `workflow/build_updated_watershed_asset.py` merges checked additions into an
   existing Earth Engine watershed asset without hard-coded row counts.
 
-Progress notes are kept in [PROGRESS_UPDATES.md](PROGRESS_UPDATES.md). Product
-and asset settings are under `config/`; generated exports and temporary files
-do not belong in Git.
+Product and asset settings are under `config/`; generated exports and
+temporary files do not belong in Git.
 
 ## Final coverage checks
 

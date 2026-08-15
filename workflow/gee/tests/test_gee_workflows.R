@@ -86,6 +86,31 @@ active_block <- evaluate_preflight(
 )
 stopifnot(!active_block$approved)
 
+custom_stop_approved <- evaluate_preflight(
+  proposed_task_count = 1L,
+  monthly_limit_hours = 1000,
+  monitoring = list(observed_eecu_hours = 799),
+  task_summary = known_history,
+  max_task_area_km2 = 100,
+  scale_m = 1000,
+  time_slices_per_task = 1L,
+  monthly_stop_hours = 800
+)
+stopifnot(isTRUE(custom_stop_approved$approved))
+stopifnot(custom_stop_approved$limits$monthly_stop_eecu_hours == 800)
+
+custom_stop_blocked <- evaluate_preflight(
+  proposed_task_count = 1L,
+  monthly_limit_hours = 1000,
+  monitoring = list(observed_eecu_hours = 800),
+  task_summary = known_history,
+  max_task_area_km2 = 100,
+  scale_m = 1000,
+  time_slices_per_task = 1L,
+  monthly_stop_hours = 800
+)
+stopifnot(!custom_stop_blocked$approved)
+
 ### Receipt lifecycle
 
 issued <- as.POSIXct("2026-08-05 12:00:00", tz = "UTC")
@@ -191,7 +216,23 @@ exact_plan <- list(
 )
 exact_qa <- glc_validate_asset_rows(exact_rows, exact_plan)
 stopifnot(exact_qa$rows == length(glc_years) * length(glc_classes))
+stopifnot(exact_qa$maximum_area_closure_relative_error == 0)
 expect_error(glc_validate_asset_rows(exact_rows[-1], exact_plan))
+
+boundary_exact_rows <- exact_rows
+boundary_exact_rows[[1]]$Area_m2 <-
+  boundary_exact_rows[[1]]$Area_m2 + length(glc_classes) * 0.005
+boundary_exact_qa <- glc_validate_asset_rows(boundary_exact_rows, exact_plan)
+stopifnot(isTRUE(all.equal(
+  boundary_exact_qa$maximum_area_closure_relative_error,
+  0.005,
+  tolerance = 1e-12
+)))
+
+invalid_exact_rows <- exact_rows
+invalid_exact_rows[[1]]$Area_m2 <-
+  invalid_exact_rows[[1]]$Area_m2 + length(glc_classes) * 0.02
+expect_error(glc_validate_asset_rows(invalid_exact_rows, exact_plan))
 
 sample_rows <- lapply(glc_years, function(year) {
   lapply(seq_along(glc_classes), function(index) {
@@ -221,6 +262,7 @@ sample_plan$method <- "sample"
 sample_plan$sample_points <- 10000L
 sample_qa <- glc_validate_asset_rows(sample_rows, sample_plan)
 stopifnot(sample_qa$minimum_sample_n == 10000)
+stopifnot(sample_qa$maximum_area_closure_relative_error == 0)
 
 strict_sample_plan <- sample_plan
 strict_sample_plan$sample_points <- 10200L
@@ -335,12 +377,28 @@ stopifnot(isTRUE(all.equal(
 
 existing_alias <- rbind(
   shared_source,
-  transform(shared_source, Stream_Name = "S65C")
+  transform(
+    shared_source,
+    site_id = "old_alias",
+    Stream_Name = "S65C",
+    Area_m2 = 0
+  )
 )
-expect_error(add_shared_watershed_aliases(
+replaced_alias <- add_shared_watershed_aliases(
   existing_alias,
   glc_default_alias_file
+)
+replaced_rows <- replaced_alias$Stream_Name == "S65C"
+stopifnot(sum(replaced_rows) == 2L)
+stopifnot(all(replaced_alias$watershed_alias_flag[replaced_rows]))
+stopifnot(all(
+  replaced_alias$site_id[replaced_rows] == "krr__s_65bc__s65c"
 ))
+stopifnot(isTRUE(all.equal(
+  replaced_alias$Area_m2[replaced_rows],
+  shared_source$Area_m2,
+  check.attributes = FALSE
+)))
 
 ### Major-land calculation settings
 

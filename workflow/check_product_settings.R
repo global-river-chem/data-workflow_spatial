@@ -37,6 +37,7 @@ missing_fields <- function(product) {
   }
 
   if (!identical(product$type, "source_list") &&
+      !identical(product$type, "watershed_summary") &&
       !identical(product$source_temporal_resolution, "static")) {
     required <- c(required, "selected_spatial_resolution_m")
   }

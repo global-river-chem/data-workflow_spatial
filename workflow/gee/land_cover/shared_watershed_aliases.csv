@@ -1,2 +1,10 @@
-LTER,Shapefile_Name,source_Stream_Name,alias_Stream_Name,alias_site_id,reason
-KRR,s_65bc,S65B,S65C,krr__s_65bc__s65c,S65B and S65C intentionally share the complete accepted s_65bc watershed
+source_LTER,Shapefile_Name,source_Stream_Name,alias_LTER,alias_Stream_Name,alias_site_id,reason
+GRO,Amazon_Obidos,Obidos,Amazon,Amazon River at Obidos,amazon__amazon_obidos,The Amazon and GRO records use the same accepted Amazon_Obidos watershed
+GRO,Amazon_Obidos,Obidos,HYBAM,Obidos,hybam__amazon_obidos,The HYBAM and GRO records use the same accepted Amazon_Obidos watershed
+Finnish Environmental Institute,kymijoki_ahvenkoski_syke,Kymijoki Ahvenkoski 001,Finnish Environmental Institute,Site 11523,finnish_environmental_institute__kymijoki_ahvenkoski_syke__site_11523,Site 11523 uses the accepted Kymijoki Ahvenkoski watershed
+Finnish Environmental Institute,kymijoki_kokonkoski_syke,Kymijoki Kokonkoski 014,Finnish Environmental Institute,Site 11532,finnish_environmental_institute__kymijoki_kokonkoski_syke__site_11532,Site 11532 uses the accepted Kymijoki Kokonkoski watershed
+Finnish Environmental Institute,kymijoki_huruksela_syke,Kymij Huruksela 033 5600,Finnish Environmental Institute,Site 11564,finnish_environmental_institute__kymijoki_huruksela_syke__site_11564,Site 11564 uses the accepted Kymijoki Huruksela watershed
+KRR,s_65bc,S65B,KRR,S65C,krr__s_65bc__s65c,S65B and S65C intentionally share the complete accepted s_65bc watershed
+USGS,HAPP,MERCED R,USGS,Merced River,usgs__happ__merced_river,Merced River is a source alias for MERCED R and uses the accepted HAPP watershed
+USGS,BAYF,VALLECITO CREEK,USGS,Vallecito Creek,usgs__bayf__vallecito_creek,Vallecito Creek is a source alias for VALLECITO CREEK and uses the accepted BAYF watershed
+USGS,CAMP,WEST CLEAR,USGS,West Clear Creek,usgs__camp__west_clear_creek,West Clear Creek is a source alias for WEST CLEAR and uses the accepted CAMP watershed

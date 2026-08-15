@@ -12,6 +12,9 @@ from typing import Any
 import run_safe_glc_fcs30d_exports as glc
 
 
+MAJOR_SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
+
+
 ee = glc.ee
 
 # Each weight is the number of years from 1900 through 2022 represented by
@@ -126,7 +129,7 @@ def major_output_properties(plan: glc.TaskPlan) -> dict[str, Any]:
                 "local_point_sampling_crs": (
                     plan.local_point_sample.sampling_crs
                 ),
-                "sampled_reducer_version": glc.SAMPLED_REDUCER_VERSION,
+                "sampled_reducer_version": MAJOR_SAMPLED_REDUCER_VERSION,
             }
         )
     return {key: value for key, value in result.items() if value is not None}

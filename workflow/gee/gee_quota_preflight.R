@@ -231,12 +231,24 @@ evaluate_preflight <- function(
   time_slices_per_task = 1L,
   bands_per_slice = 1L,
   effective_pixels_per_task = NULL,
-  watchdog_cancel_hours_cap = NULL
+  watchdog_cancel_hours_cap = NULL,
+  monthly_stop_hours = NULL
 ) {
   blockers <- character()
   warnings <- character()
   observed_hours <- as.numeric(monitoring$observed_eecu_hours)
-  stop_hours <- monthly_limit_hours * monthly_stop_fraction
+  stop_hours <- if (is.null(monthly_stop_hours)) {
+    monthly_limit_hours * monthly_stop_fraction
+  } else {
+    as.numeric(monthly_stop_hours)
+  }
+  if (
+    !is.finite(stop_hours) ||
+      stop_hours <= 0 ||
+      stop_hours > monthly_limit_hours
+  ) {
+    stop("The monthly safety stop must be positive and no higher than the monthly limit")
+  }
   max_batch_hours <- min(
     monthly_limit_hours * max_batch_fraction,
     absolute_max_batch_hours
@@ -431,19 +443,21 @@ build_receipt <- function(
   effective_pixels_per_task = NULL,
   workload_fingerprint = NULL,
   watchdog_cancel_hours_cap = NULL,
+  monthly_stop_hours = NULL,
   now = Sys.time()
 ) {
   decision <- evaluate_preflight(
-    proposed_task_count,
-    monthly_limit_hours,
-    monitoring,
-    task_summary,
-    max_task_area_km2,
-    scale_m,
-    time_slices_per_task,
-    bands_per_slice,
-    effective_pixels_per_task,
-    watchdog_cancel_hours_cap
+    proposed_task_count = proposed_task_count,
+    monthly_limit_hours = monthly_limit_hours,
+    monitoring = monitoring,
+    task_summary = task_summary,
+    max_task_area_km2 = max_task_area_km2,
+    scale_m = scale_m,
+    time_slices_per_task = time_slices_per_task,
+    bands_per_slice = bands_per_slice,
+    effective_pixels_per_task = effective_pixels_per_task,
+    watchdog_cancel_hours_cap = watchdog_cancel_hours_cap,
+    monthly_stop_hours = monthly_stop_hours
   )
   receipt <- list(
     schema_version = 3L,
@@ -748,6 +762,7 @@ preflight_main <- function() {
   monthly_limit_hours <- as.numeric(
     args$monthly_limit_hours %||% default_monthly_limit_hours
   )
+  monthly_stop_hours <- as_number_or_null(args$monthly_stop_eecu_hours)
   watchdog_cap <- as_number_or_null(args$watchdog_cancel_eecu_hours)
   timezone_name <- args$timezone %||% "America/Los_Angeles"
   live <- fetch_live_inputs(project, description_prefix, timezone_name)
@@ -767,7 +782,8 @@ preflight_main <- function() {
     bands_per_slice,
     effective_pixels_per_task,
     workload_fingerprint,
-    watchdog_cap
+    watchdog_cap,
+    monthly_stop_hours
   )
   write_json(receipt, receipt_path)
   print_report(receipt, receipt_path)

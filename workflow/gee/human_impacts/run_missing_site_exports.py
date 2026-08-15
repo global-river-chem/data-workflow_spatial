@@ -1,9 +1,8 @@
-"""Run human-impact exports only for sites missing from the baseline asset.
+"""Run human-impact exports for an exact approved watershed target.
 
-The command starts with a dry run. It lists the new sites for review and does
-not submit anything until ``--submit`` and the matching approved site list are
-provided. This keeps a larger watershed asset from rerunning sites that the
-earlier batch already covered.
+The command starts with a dry run and requires the target asset IDs to match
+an existing reviewed site list. This includes changed watersheds while keeping
+accepted unchanged sites out of the rerun.
 """
 
 from __future__ import annotations
@@ -29,7 +28,6 @@ HELPER_ROOT = Path(__file__).resolve().parents[1]
 
 
 DEFAULT_PROJECT = os.getenv("SILICA_GEE_PROJECT", "silica-synthesis")
-DEFAULT_BASELINE_ASSET = os.getenv("SILICA_GEE_BASELINE_ASSET", "")
 DEFAULT_WORKFLOW_ROOT = os.getenv("SILICA_HUMAN_IMPACT_WORKFLOW_ROOT", "")
 
 
@@ -77,35 +75,32 @@ LABEL_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Find sites that are not in a previously covered watershed asset. "
-            "Nothing is "
-            "submitted unless --submit and the matching approved site list are "
-            "both provided."
+            "Check an exact reviewed watershed target and plan human-impact "
+            "exports. Nothing is submitted unless --submit and a matching "
+            "quota receipt are both provided."
         )
     )
     parser.add_argument(
-        "--candidate-asset",
+        "--target-asset",
         required=True,
-        help="Earth Engine watershed asset containing the latest accepted sites.",
+        help="Earth Engine watershed asset containing the exact rerun target.",
     )
     parser.add_argument(
-        "--expected-new-count",
+        "--expected-site-count",
         required=True,
         type=int,
-        help="Number of new site IDs you expect to find.",
+        help="Number of distinct site IDs required in the target asset.",
+    )
+    parser.add_argument(
+        "--expected-site-ids",
+        required=True,
+        type=Path,
+        help="Reviewed CSV with a site_id column, or one-ID-per-line text file.",
     )
     parser.add_argument(
         "--run-label",
         required=True,
         help="Lowercase task label, for example reviewed_new_sites.",
-    )
-    parser.add_argument(
-        "--baseline-asset",
-        default=DEFAULT_BASELINE_ASSET,
-        help=(
-            "Previously processed watershed asset. Alternatively set "
-            "SILICA_GEE_BASELINE_ASSET."
-        ),
     )
     parser.add_argument("--project", default=DEFAULT_PROJECT)
     parser.add_argument(
@@ -130,12 +125,14 @@ def parse_args() -> argparse.Namespace:
         help="Path for the JSON review summary written before submission.",
     )
     parser.add_argument(
-        "--approved-site-ids",
-        type=Path,
-        help=(
-            "CSV with a site_id column, or a text file with one ID per line. "
-            "Required with --submit."
-        ),
+        "--only-dataset",
+        choices=(*STATIC_DATASETS, "population"),
+        help="Limit a smoke test to one dataset.",
+    )
+    parser.add_argument(
+        "--only-year",
+        type=int,
+        help="With --only-dataset population, limit the plan to one year.",
     )
     parser.add_argument(
         "--submit",
@@ -154,10 +151,6 @@ def parse_args() -> argparse.Namespace:
         help="Fresh, approved receipt from gee_quota_preflight.R.",
     )
     args = parser.parse_args()
-    if not args.baseline_asset:
-        parser.error(
-            "--baseline-asset is required unless SILICA_GEE_BASELINE_ASSET is set."
-        )
     if args.workflow_root is None:
         parser.error(
             "--workflow-root is required unless "
@@ -165,19 +158,21 @@ def parse_args() -> argparse.Namespace:
         )
     if args.max_new_tasks < 1:
         parser.error("--max-new-tasks must be positive.")
+    if args.only_year is not None and args.only_dataset != "population":
+        parser.error("--only-year requires --only-dataset population.")
     return args
 
 
-def read_approved_site_ids(path: Path) -> list[str]:
-    """Read the human-reviewed new-site list without changing ID spelling."""
+def read_expected_site_ids(path: Path) -> list[str]:
+    """Read the reviewed target IDs without changing ID spelling."""
     if not path.exists():
-        raise FileNotFoundError(f"Approved site-ID file does not exist: {path}")
+        raise FileNotFoundError(f"Expected site-ID file does not exist: {path}")
     if path.suffix.lower() == ".csv":
         with path.open(newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle)
             if not reader.fieldnames or SITE_ID_PROPERTY not in reader.fieldnames:
                 raise ValueError(
-                    f"Approved CSV must contain a {SITE_ID_PROPERTY!r} column."
+                    f"Expected CSV must contain a {SITE_ID_PROPERTY!r} column."
                 )
             values = [row[SITE_ID_PROPERTY].strip() for row in reader]
     else:
@@ -187,9 +182,9 @@ def read_approved_site_ids(path: Path) -> list[str]:
             if line.strip()
         ]
     if not values or any(not value for value in values):
-        raise ValueError("Approved site-ID file is empty or contains blank IDs.")
+        raise ValueError("Expected site-ID file is empty or contains blank IDs.")
     if len(values) != len(set(values)):
-        raise ValueError("Approved site-ID file contains duplicate IDs.")
+        raise ValueError("Expected site-ID file contains duplicate IDs.")
     return sorted(values)
 
 
@@ -254,10 +249,15 @@ def active_operations_by_description() -> dict[str, dict]:
     }
 
 
-def output_name(dataset: str, year: int | None, new_count: int, run_label: str) -> str:
+def output_name(
+    dataset: str,
+    year: int | None,
+    site_count: int,
+    run_label: str,
+) -> str:
     period = str(year) if year is not None else "static"
     return (
-        f"human_impacts_{dataset}_{period}_{new_count}newsites_"
+        f"human_impacts_{dataset}_{period}_{site_count}sites_"
         f"{run_label}_watershed_extract"
     )
 
@@ -265,32 +265,6 @@ def output_name(dataset: str, year: int | None, new_count: int, run_label: str) 
 def write_manifest(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
-def write_site_id_manifest(path: Path, site_ids: Iterable[str]) -> None:
-    """Write the site list that a reviewer will approve before submission."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow([SITE_ID_PROPERTY])
-        writer.writerows([site_id] for site_id in site_ids)
-
-
-def assert_exact_approved_delta(
-    approved_path: Path | None,
-    computed_new_ids: list[str],
-) -> None:
-    if approved_path is None:
-        raise ValueError("--submit requires --approved-site-ids.")
-    approved_ids = read_approved_site_ids(approved_path)
-    if approved_ids != computed_new_ids:
-        missing_from_approval = sorted(set(computed_new_ids) - set(approved_ids))
-        unexpected_in_approval = sorted(set(approved_ids) - set(computed_new_ids))
-        raise RuntimeError(
-            "The approved site IDs do not match the new sites found in the asset. "
-            f"Missing from approval: {missing_from_approval}; "
-            f"unexpected in approval: {unexpected_in_approval}."
-        )
 
 
 def restore_centroid_geometry(
@@ -316,7 +290,7 @@ def launch(
     watersheds: ee.FeatureCollection,
     config: dict,
     output_folder: str,
-    new_count: int,
+    site_count: int,
     run_label: str,
     extract_human_impact_dataset,
     human_impact_export_columns,
@@ -329,7 +303,7 @@ def launch(
     for item in plan:
         dataset = item["dataset"]
         year = item["year"]
-        name = output_name(dataset, year, new_count, run_label)
+        name = output_name(dataset, year, site_count, run_label)
         asset_id = f"{output_folder}/{name}"
         if asset_or_none(asset_id) is not None:
             state = "SKIP_COMPLETED"
@@ -386,8 +360,8 @@ def main() -> None:
             "Install and authenticate the Earth Engine Python API before "
             "running exports: python3 -m pip install earthengine-api"
         )
-    if args.expected_new_count <= 0:
-        raise ValueError("--expected-new-count must be greater than zero.")
+    if args.expected_site_count <= 0:
+        raise ValueError("--expected-site-count must be greater than zero.")
     if not LABEL_PATTERN.fullmatch(args.run_label):
         raise ValueError(
             "--run-label must contain only lowercase letters, numbers, and underscores."
@@ -407,97 +381,96 @@ def main() -> None:
     )
 
     ee.Initialize(project=args.project)
-    baseline = ee.FeatureCollection(args.baseline_asset)
-    candidate = ee.FeatureCollection(args.candidate_asset)
-    baseline_rows, baseline_ids = feature_collection_ids(baseline, "Baseline asset")
-    candidate_rows, candidate_ids = feature_collection_ids(candidate, "Candidate asset")
-
-    baseline_set = set(baseline_ids)
-    candidate_set = set(candidate_ids)
-    new_ids = sorted(candidate_set - baseline_set)
-    candidate_overlap_ids = sorted(candidate_set & baseline_set)
-    if len(new_ids) != args.expected_new_count:
+    expected_ids = read_expected_site_ids(args.expected_site_ids)
+    if len(expected_ids) != args.expected_site_count:
         raise RuntimeError(
-            f"Expected {args.expected_new_count} new sites but computed {len(new_ids)}. "
+            f"Expected {args.expected_site_count} reviewed IDs but found "
+            f"{len(expected_ids)}. Nothing was submitted."
+        )
+    target_watersheds = ee.FeatureCollection(args.target_asset)
+    target_rows, target_ids = feature_collection_ids(
+        target_watersheds,
+        "Target asset",
+    )
+    if target_rows != args.expected_site_count or target_ids != expected_ids:
+        missing_ids = sorted(set(expected_ids) - set(target_ids))
+        unexpected_ids = sorted(set(target_ids) - set(expected_ids))
+        raise RuntimeError(
+            "Target asset IDs do not match the reviewed target. "
+            f"Missing: {missing_ids}; unexpected: {unexpected_ids}. "
             "Nothing was submitted."
         )
 
-    new_watersheds = candidate.filter(
-        ee.Filter.inList(SITE_ID_PROPERTY, new_ids)
-    )
-    selected_rows, selected_ids = feature_collection_ids(
-        new_watersheds,
-        "New-site selection",
-    )
-    repeated_selected_ids = sorted(set(selected_ids) & baseline_set)
-    if repeated_selected_ids:
-        raise RuntimeError(
-            "New-site selection overlaps the completed baseline: "
-            f"{repeated_selected_ids}"
-        )
-    if selected_ids != new_ids or selected_rows != len(new_ids):
-        raise RuntimeError("The selected watersheds do not match the new site list.")
-
     output_folder = args.output_folder or (
-        f"projects/{args.project}/assets/human_impacts_new_sites_{args.run_label}"
+        f"projects/{args.project}/assets/human_impacts_incremental_{args.run_label}"
     )
     manifest_path = args.manifest or Path(
         "generated_outputs/gee_task_timing"
-    ) / f"human_impacts_new_sites_preflight_{args.run_label}.json"
-    site_id_manifest_path = manifest_path.with_name(
-        f"{manifest_path.stem}_site_ids.csv"
-    )
-    manifest = {
+    ) / f"human_impacts_incremental_{args.run_label}.json"
+    summary = {
         "checked_at_utc": datetime.now(timezone.utc).isoformat(),
         "project": args.project,
-        "baseline_asset": args.baseline_asset,
-        "baseline_rows": baseline_rows,
-        "candidate_asset": args.candidate_asset,
-        "candidate_rows": candidate_rows,
-        "candidate_ids_already_in_baseline": len(candidate_overlap_ids),
-        "expected_new_count": args.expected_new_count,
-        "computed_new_count": len(new_ids),
-        "new_site_ids": new_ids,
-        "new_site_id_manifest": str(site_id_manifest_path),
-        "selected_baseline_overlap_count": len(repeated_selected_ids),
+        "target_asset": args.target_asset,
+        "target_rows": target_rows,
+        "expected_site_count": args.expected_site_count,
+        "expected_site_ids": str(args.expected_site_ids.resolve()),
         "output_folder": output_folder,
         "run_label": args.run_label,
+        "only_dataset": args.only_dataset,
+        "only_year": args.only_year,
         "submit_requested": args.submit,
     }
-    write_manifest(manifest_path, manifest)
-    write_site_id_manifest(site_id_manifest_path, new_ids)
-    print(json.dumps(manifest, indent=2, sort_keys=True), flush=True)
-    print(f"Review summary saved to: {manifest_path}", flush=True)
-    print(f"New-site list saved to: {site_id_manifest_path}", flush=True)
-
-    if not args.submit:
-        print("Dry run complete. No Earth Engine tasks were submitted.", flush=True)
-        return
-
-    assert_exact_approved_delta(args.approved_site_ids, new_ids)
     config = load_human_impact_config(
         workflow_root / "config/human-impact-products.yml"
     )
     plan = human_run_plan(config, available_dataset_years)
+    if args.only_dataset:
+        plan = [item for item in plan if item["dataset"] == args.only_dataset]
+    if args.only_year is not None:
+        plan = [item for item in plan if item["year"] == args.only_year]
+    if not plan:
+        raise RuntimeError("The requested human-impact plan is empty.")
     active = active_operations_by_description()
     missing_plan = []
     for item in plan:
         name = output_name(
             item["dataset"],
             item["year"],
-            len(new_ids),
+            target_rows,
             args.run_label,
         )
         asset_id = f"{output_folder}/{name}"
         if asset_or_none(asset_id) is None and name not in active:
             missing_plan.append({**item, "description": name})
     launch_plan = missing_plan[: args.max_new_tasks]
-    max_task_area_km2 = float(
-        new_watersheds.aggregate_sum("polygon_area_km2").getInfo() or 0
+    launch_scales = [
+        float(
+            config["datasets"][item["dataset"]].get(
+                "selected_spatial_resolution_m",
+                1000,
+            )
+        )
+        for item in launch_plan
+    ]
+    preflight_scale_m = min(launch_scales, default=1000)
+    area_property = "_quota_area_km2"
+    area_watersheds = target_watersheds.map(
+        lambda feature: feature.set(
+            area_property,
+            feature.geometry().area(maxError=1).divide(1_000_000),
+        )
     )
+    max_task_area_km2 = float(
+        area_watersheds.aggregate_sum(area_property).getInfo() or 0
+    )
+    summary["planned_outputs"] = len(plan)
+    summary["missing_outputs"] = len(missing_plan)
+    summary["max_task_area_km2"] = max_task_area_km2
+    summary["preflight_scale_m"] = preflight_scale_m
+    print(json.dumps(summary, indent=2, sort_keys=True), flush=True)
     print(
         f"Missing non-GHSL tasks: {len(missing_plan)}; "
-        f"new-task cap: {args.max_new_tasks}; "
+        f"task cap: {args.max_new_tasks}; "
         f"tasks eligible now: {len(launch_plan)}.",
         flush=True,
     )
@@ -505,16 +478,19 @@ def main() -> None:
         print(
             "Required preflight:\n"
             "  Rscript workflow/gee/gee_quota_preflight.R "
-            "--workflow human_impacts_new_sites "
+            "--workflow human_impacts_incremental "
             "--description-prefix human_impacts_ "
             f"--proposed-task-count {len(launch_plan)} "
-            f"--site-count {len(new_ids)} "
+            f"--site-count {target_rows} "
             f"--max-task-area-km2 {max_task_area_km2:.6f} "
-            "--scale-m 100 "
+            f"--scale-m {preflight_scale_m:g} "
             "--receipt generated_outputs/gee_preflight/"
             f"human_impacts_{args.run_label}.json",
             flush=True,
         )
+    if not args.submit:
+        print("Dry run complete. No Earth Engine tasks were submitted.", flush=True)
+        return
     if not launch_plan:
         print("No missing tasks remain; nothing submitted.", flush=True)
         return
@@ -526,12 +502,12 @@ def main() -> None:
     consume_preflight_receipt(
         args.preflight_receipt,
         project=args.project,
-        workflow="human_impacts_new_sites",
+        workflow="human_impacts_incremental",
         description_prefix="human_impacts_",
         proposed_task_count=len(launch_plan),
-        site_count=len(new_ids),
+        site_count=target_rows,
         max_task_area_km2=max_task_area_km2,
-        scale_m=100.0,
+        scale_m=preflight_scale_m,
         time_slices_per_task=1,
     )
     allowed_descriptions = {
@@ -539,19 +515,19 @@ def main() -> None:
     }
     task_rows = launch(
         plan,
-        new_watersheds,
+        target_watersheds,
         config,
         output_folder,
-        len(new_ids),
+        target_rows,
         args.run_label,
         extract_human_impact_dataset,
         human_impact_export_columns,
         allowed_descriptions,
     )
     task_log = manifest_path.with_name(
-        f"human_impacts_new_sites_tasks_{args.run_label}.json"
+        f"human_impacts_incremental_tasks_{args.run_label}.json"
     )
-    write_manifest(task_log, {"manifest": manifest, "tasks": task_rows})
+    write_manifest(task_log, {"summary": summary, "tasks": task_rows})
     print(f"Task list saved to: {task_log}", flush=True)
 
 
