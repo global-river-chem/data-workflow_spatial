@@ -162,8 +162,18 @@ runs:
     mode: single_product
     products:
       - elevation
-      - permafrost
     timing: static
     run_groups: all
     launch_export: false
-    notes: Static continuous context layers; permafrost needs the project asset path before this can launch
+    notes: Static continuous context layers; the GlASS/CQ PERPROB workflow remains unchanged and separate
+
+  permafrost_cci_mean_2000_2022:
+    mode: single_product
+    products:
+      - permafrost
+    timing: annual
+    start_year: 2000
+    end_year: 2022
+    run_groups: all
+    launch_export: false
+    notes: Deferred until the paused workflow resumes on 2026-08-20. Extract annual area-weighted watershed means of ESA Permafrost_cci v5.0 PFR and average them into one predictor, mean permafrost area fraction, 2000-2022. Keep uncovered regions missing and flagged; do not merge PFR with GlobPermafrost PERPROB.

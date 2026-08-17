@@ -233,20 +233,39 @@ products:
     notes: Static watershed mean elevation
 
   permafrost:
-    status: needs_asset
-    source: Existing permafrost probability raster
-    gee_id: REPLACE_WITH_UPLOADED_PERMAFROST_ASSET
-    band: permafrost_probability
+    status: selected_deferred
+    source: ESA Climate Change Initiative Permafrost_cci v5.0
+    gee_id: DEFERRED_LOCAL_OR_UPLOADED_ESA_PERMAFROST_CCI_V5_PFR
+    band: PFR
     type: continuous
-    source_temporal_resolution: static
-    output_units: probability
+    source_temporal_resolution: annual
+    selected_spatial_resolution_m: 1000
+    native_units: percent
+    output_units: percent
     output_temporal_resolution:
-      - static
+      - period_mean
+    available_start_date: 1997-01-01
+    available_end_date_checked: 2023-12-31
+    export_start_year: 2000
+    export_end_year: 2022
     scale_factor: 1
     offset: 0
-    reducer: mean
-    output_name: permafrost_probability
-    notes: Use uploaded source raster unless a better global GEE product is selected
+    reducer: area_weighted_mean
+    temporal_reducer: mean
+    output_name: mean_permafrost_area_fraction_2000_2022
+    northern_hemisphere_doi: https://doi.org/10.5285/d235665772ec4b558e9a89ac85595e71
+    northern_hemisphere_2022_source: https://data.ceda.ac.uk/neodc/esacci/permafrost/data/permafrost_extent/L4/area4/pp/v05.0/northern_hemisphere/2022
+    antarctic_doi: https://doi.org/10.5285/25447c253cbe435b937347756fe47146
+    coverage_qa:
+      northern_hemisphere: Roughly north of 30 degrees N; catalog boundary is about 25 degrees N
+      antarctica: Use the separate Antarctic product
+      uncovered_regions: Keep missing and flag explicitly; never assign zero to the Andes, New Zealand, East Africa, or other uncovered regions
+    legacy_glass_cq:
+      source: GlobPermafrost PERPROB
+      period: 2000-2016
+      measure: Modeled permafrost occurrence probability
+      rule: Preserve the current GlASS/CQ workflow unchanged; never append, extend, or mix PFR values with PERPROB
+    notes: Extract annual area-weighted watershed means for PFR, then average 2000-2022 into one predictor named mean permafrost area fraction, 2000-2022. PFR is permafrost area fraction, not occurrence probability. Do not substitute surface freeze/thaw data. Work remains paused until 2026-08-20.
 
   lithology:
     status: needs_review

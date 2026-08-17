@@ -434,6 +434,146 @@ python_status <- system2(
 )
 stopifnot(is.null(attr(python_status, "status")))
 
+### MODIS export geometry
+
+modis_python_test <- system2(
+  "python3",
+  c("workflow/gee/modis/run_safe_modis_parity_exports.py", "--self-test"),
+  stdout = TRUE,
+  stderr = TRUE
+)
+stopifnot(is.null(attr(modis_python_test, "status")))
+modis_r_test <- system2(
+  "Rscript",
+  c("workflow/gee/modis/consolidate_modis_parity_exports.R", "--self-test"),
+  stdout = TRUE,
+  stderr = TRUE
+)
+stopifnot(is.null(attr(modis_r_test, "status")))
+
+### Retained ERA5 split
+
+era5_payload_list_path <- file.path(
+  "generated_outputs", "spatial-rerun-20260815",
+  "era5-remaining-85-payloads", "payload_manifest.csv"
+)
+era5_runner_args <- c(
+  "workflow/gee/era5_land/run_release3_remaining_85.R",
+  "--self-test"
+)
+era5_runner_test <- system2(
+  "Rscript", era5_runner_args, stdout = TRUE, stderr = TRUE
+)
+stopifnot(is.null(attr(era5_runner_test, "status")))
+if (file.exists(era5_payload_list_path)) {
+  era5_payload_list <- read.csv(
+    era5_payload_list_path,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  stopifnot(identical(
+    era5_payload_list$payload,
+    sprintf("era5_remaining_01_part_%02d", seq_len(6L))
+  ))
+  stopifnot(sum(era5_payload_list$sites) == 85L)
+  stopifnot(all(file.exists(file.path(
+    "generated_outputs", "spatial-rerun-20260815",
+    "era5-remaining-85-payloads", era5_payload_list$path
+  ))))
+  era5_runner_test <- system2("Rscript", c(
+    era5_runner_args,
+    "--input-root", dirname(era5_payload_list_path)
+  ), stdout = TRUE, stderr = TRUE)
+  stopifnot(is.null(attr(era5_runner_test, "status")))
+}
+
+invisible(parse(file = "workflow/gee/consolidate_release3_replacements.R"))
+
+### Release-three safeguards
+
+watershed_qa_path <- file.path(
+  "generated_outputs", "watersheds-20260815",
+  "watersheds_all_sites_20260815_qa.rds"
+)
+if (file.exists(watershed_qa_path)) {
+  watershed_qa <- readRDS(watershed_qa_path)
+  stopifnot(watershed_qa$discharge_overlay$primary_geometry_rows_updated == 177L)
+  stopifnot(nrow(watershed_qa$coordinate_review) == 2L)
+  stopifnot(identical(
+    sort(watershed_qa$coordinate_review$Chemistry_Site_ID),
+    c("NF02ZM0020", "NF02ZM0185")
+  ))
+  stopifnot(all(watershed_qa$input_files$unchanged_during_build))
+  stopifnot(nrow(watershed_qa$output_files) == 4L)
+}
+
+harmonizer_environment <- new.env(parent = globalenv())
+sys.source(
+  "workflow/harmonization/build_release3_spatial_datasets.R",
+  envir = harmonizer_environment
+)
+waterbody_test <- data.frame(
+  canonical_row_id = c("river", "outlet", "site_0854", "site_1008"),
+  LTER = c("Test", "Canada_ECCC", "Danube", "GEMS"),
+  Stream_Name = c(
+    "Ordinary River", "QUIDI VIDI LAKE AT OUTLET", "MD5", "ITA00391"
+  ),
+  Waterbody = c("River", "Stream", "Reservoir", "Reservoir"),
+  Location = c("", "", "Costesti Reservoir", "INVASO DEL MOLATO"),
+  Original_Stream_Name = c("", "QUIDI VIDI LAKE AT OUTLET", "", ""),
+  stringsAsFactors = FALSE
+)
+waterbody_result <- harmonizer_environment$keep_flowing_water_sites(list(
+  modis = waterbody_test,
+  era5 = waterbody_test,
+  discharge_qa = list()
+))
+stopifnot(
+  nrow(waterbody_result$modis) == 2L,
+  identical(waterbody_result$modis$canonical_row_id, c("river", "outlet")),
+  nrow(waterbody_result$waterbody_qa$excluded) == 2L,
+  waterbody_result$waterbody_qa$retained_name_matches$canonical_row_id == "outlet"
+)
+unreviewed_waterbody <- waterbody_test
+unreviewed_waterbody$Waterbody[[1]] <- "Unknown"
+stopifnot(inherits(try(
+  harmonizer_environment$keep_flowing_water_sites(list(
+    modis = unreviewed_waterbody,
+    era5 = unreviewed_waterbody,
+    discharge_qa = list()
+  )),
+  silent = TRUE
+), "try-error"))
+mismatched_waterbody <- waterbody_test
+mismatched_waterbody$Waterbody[[1]] <- "Stream"
+stopifnot(inherits(try(
+  harmonizer_environment$keep_flowing_water_sites(list(
+    modis = waterbody_test,
+    era5 = mismatched_waterbody,
+    discharge_qa = list()
+  )),
+  silent = TRUE
+), "try-error"))
+
+readback_file <- tempfile(fileext = ".csv")
+readback_expected <- data.frame(
+  LTER = c("Test", "Test"),
+  Stream_Name = c("A", "B"),
+  canonical_row_id = c("a", "b"),
+  value = c(1, NA_real_),
+  stringsAsFactors = FALSE
+)
+write.csv(readback_expected, readback_file, row.names = FALSE, na = "")
+harmonizer_environment$assert_csv_readback(
+  readback_expected, readback_file, "test output"
+)
+readback_changed <- readback_expected
+readback_changed$value[[1L]] <- 2
+expect_error(harmonizer_environment$assert_csv_readback(
+  readback_changed, readback_file, "test output"
+))
+unlink(readback_file)
+
 ### Language boundary
 
 local_python <- c(
@@ -453,7 +593,8 @@ expected_gee_python <- c(
   "workflow/gee/era5_land/run_safe_era5_land_exports.py",
   "workflow/gee/human_impacts/run_missing_site_exports.py",
   "workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py",
-  "workflow/gee/land_cover/run_safe_glc_major_land_exports.py"
+  "workflow/gee/land_cover/run_safe_glc_major_land_exports.py",
+  "workflow/gee/modis/run_safe_modis_parity_exports.py"
 )
 stopifnot(setequal(gee_python, expected_gee_python))
 direct_gee_python <- setdiff(
