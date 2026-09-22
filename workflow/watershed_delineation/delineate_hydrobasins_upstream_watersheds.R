@@ -1,5 +1,5 @@
 # Delineate upstream HydroBASINS watersheds from selected site-table rows.
-# Site-specific outlet choices belong in the small override table, not here.
+# site-specific outlet choices belong in the small override table, not here
 
 suppressPackageStartupMessages(library(sf))
 
@@ -115,7 +115,7 @@ build_one <- function(site) {
   status <- if (area_km2 < minimum_area_km2) {
     "below_minimum_area"
   } else if (is.finite(area_difference_pct) &&
-      abs(area_difference_pct) > maximum_area_difference_pct) {
+    abs(area_difference_pct) > maximum_area_difference_pct) {
     "reference_area_mismatch"
   } else if (!is.finite(reference_area_km2)) {
     "no_independent_area_check"

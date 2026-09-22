@@ -17,7 +17,7 @@ MAJOR_SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
 
 ee = glc.ee
 
-# Each weight is the number of years from 1900 through 2022 represented by
+# each weight is the number of years from 1900 through 2022 represented by
 # that source map in the harmonized record
 YEAR_WEIGHTS = {
     1985: 88,
@@ -26,7 +26,7 @@ YEAR_WEIGHTS = {
     2000: 3,
     **{year: 1 for year in range(2001, 2023)},
 }
-# These groups match the simplified land-cover crosswalk used in harmonization
+# these groups match the simplified land-cover crosswalk used in harmonization
 SIMPLE_CLASS_IDS = {
     "Bare": (140, 200, 201, 202),
     "Cropland": (10, 11, 12, 20),
@@ -38,7 +38,7 @@ SIMPLE_CLASS_IDS = {
     "Tidal_Wetland": (185, 186, 187),
     "Wetland_Marsh": (181, 182, 183),
 }
-# These classes stay in yearly totals but cannot be selected as major land cover
+# these classes stay in yearly totals but cannot be selected as major land cover
 NON_CANDIDATE_CLASS_IDS = (0, 184)
 MAPPED_CLASS_IDS = tuple(
     class_id
@@ -53,7 +53,7 @@ if set(MAPPED_CLASS_IDS) | set(NON_CANDIDATE_CLASS_IDS) != set(glc.GLC_CLASSES):
     raise ValueError("The major-land crosswalk must account for every GLC class.")
 
 
-# ---- Land-cover scores ----
+# ---- land-cover scores ----
 
 
 def sum_classes(values: Any, class_ids: tuple[int, ...]) -> Any:
@@ -173,7 +173,7 @@ def select_major_classes(
     )
 
 
-# ---- Exact and sampled summaries ----
+# ---- exact and sampled summaries ----
 
 
 def build_exact_major_export(plan: glc.TaskPlan) -> Any:

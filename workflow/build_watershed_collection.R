@@ -1,5 +1,5 @@
-# Build the Earth Engine watershed collection from the finalized site table
-# and the exact versioned watershed library named by that table.
+# build the earth engine watershed collection from the finalized site table
+# and the exact versioned watershed library named by that table
 
 suppressPackageStartupMessages({
   library(dplyr)

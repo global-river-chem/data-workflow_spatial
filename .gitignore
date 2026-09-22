@@ -5,9 +5,3 @@
 __pycache__/
 .ipynb_checkpoints/
 *.pyc
-data/
-outputs/
-generated_outputs/
-timing-logs/
-tmp/
-*.zip

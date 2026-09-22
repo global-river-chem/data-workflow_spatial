@@ -14,13 +14,14 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
 try:
     import ee
-except ImportError:  # Allow --help before Earth Engine is installed.
+except ImportError:  # allow --help before earth engine is installed
     ee = None
 
 
@@ -404,9 +405,9 @@ def main() -> None:
     output_folder = args.output_folder or (
         f"projects/{args.project}/assets/human_impacts_incremental_{args.run_label}"
     )
-    manifest_path = args.manifest or Path(
-        "generated_outputs/gee_task_timing"
-    ) / f"human_impacts_incremental_{args.run_label}.json"
+    manifest_path = args.manifest or Path(tempfile.gettempdir()) / (
+        f"human_impacts_incremental_{args.run_label}.json"
+    )
     summary = {
         "checked_at_utc": datetime.now(timezone.utc).isoformat(),
         "project": args.project,
@@ -475,6 +476,9 @@ def main() -> None:
         flush=True,
     )
     if launch_plan:
+        receipt_output = Path(tempfile.gettempdir()) / (
+            f"human_impacts_{args.run_label}.json"
+        )
         print(
             "Required preflight:\n"
             "  Rscript workflow/gee/gee_quota_preflight.R "
@@ -484,8 +488,7 @@ def main() -> None:
             f"--site-count {target_rows} "
             f"--max-task-area-km2 {max_task_area_km2:.6f} "
             f"--scale-m {preflight_scale_m:g} "
-            "--receipt generated_outputs/gee_preflight/"
-            f"human_impacts_{args.run_label}.json",
+            f"--receipt {receipt_output}",
             flush=True,
         )
     if not args.submit:

@@ -27,7 +27,7 @@ from typing import Any, Callable, Iterable
 
 try:
     import ee
-except ImportError:  # Keep pure planning functions importable in tests
+except ImportError:  # keep pure planning functions importable in tests
     ee = None
 
 
@@ -85,15 +85,14 @@ GLC_CLASSES = (
 )
 METADATA_PROPERTIES = ("site_id", "LTER", "Stream_Name", "Shapefile_Name")
 NATIVE_SCALE_M = 30.0
-# High-latitude grids can need more reducer pixels than area alone implies
+# high-latitude grids can need more reducer pixels than area alone implies
 EXACT_PIXEL_BUFFER_FACTOR = 20.0
 DEFAULT_SAMPLE_POINTS = 100_000
-# Auto mode uses every pixel only when that is no more work than sampling
-# Quota checks allow room for map-projection differences in exact tasks
+# auto mode uses every pixel only when that is no more work than sampling
+# quota checks allow room for map-projection differences in exact tasks
 DEFAULT_EXACT_MAX_WORK = DEFAULT_SAMPLE_POINTS * len(YEARS)
 SAMPLER_VERSION = "local_equal_area_points_v1"
 SAMPLED_REDUCER_VERSION = "point_features_repeat_histogram_v3"
-DEFAULT_RUN_ROOT = Path("generated_outputs/gee/glc-fcs30d-safe")
 ACTIVE_STATES = {
     "READY",
     "RUNNING",
@@ -106,7 +105,7 @@ ASSET_PART_PATTERN = re.compile(r"[^a-z0-9_-]+")
 UNSAFE_LEGACY_PREFIXES = ("glc_followup_other_targets_",)
 
 
-# ---- Site and task records ----
+# ---- site and task records ----
 
 
 @dataclass(frozen=True)
@@ -143,7 +142,7 @@ class TaskPlan:
     local_point_sample: LocalPointSample | None = None
 
 
-# ---- Input parsing ----
+# ---- input parsing ----
 
 
 def canonical_sha256(value: Any) -> str:
@@ -388,7 +387,7 @@ def safe_asset_part(value: str, maximum: int = 38) -> str:
 
 
 def stable_seed(site_id: str) -> int:
-    # Earth Engine expects a signed 32-bit seed; never return zero
+    # earth engine expects a signed 32-bit seed; never return zero
     return int(hashlib.sha256(site_id.encode("utf-8")).hexdigest()[:8], 16) % (
         2**31 - 2
     ) + 1
@@ -404,7 +403,7 @@ def method_code(method: str, sample_points: int) -> str:
     return f"mph{sample_points}"
 
 
-# ---- Task planning ----
+# ---- task planning ----
 
 
 def choose_method(
@@ -480,8 +479,8 @@ def plan_tasks(
                 effective_pixel_band_time=effective_work,
             )
         )
-    # Try the largest sampled watershed first
-    # Once sampling is proven, try the largest exact watershed
+    # try the largest sampled watershed first
+    # once sampling is proven, try the largest exact watershed
     return sorted(
         plans,
         key=lambda plan: (
@@ -560,7 +559,7 @@ def sampling_standard_error(fraction: float, sample_count: int) -> float:
     return math.sqrt(fraction * (1 - fraction) / sample_count)
 
 
-# ---- Earth Engine exports ----
+# ---- earth engine exports ----
 
 
 def require_earth_engine() -> None:
@@ -883,7 +882,7 @@ def validate_export_graph(
     return len(encoded.encode("utf-8"))
 
 
-# ---- Submission records ----
+# ---- submission records ----
 
 
 def preflight_dimensions(
@@ -1005,12 +1004,17 @@ def consume_preflight_receipt(
     subprocess.run(command, check=True)
 
 
-# ---- Command line ----
+# ---- command line ----
 
 
 def parse_args(description: str | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=description or __doc__)
-    parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
+    parser.add_argument(
+        "--run-root",
+        type=Path,
+        required=True,
+        help="External directory for payload files, task logs, and receipts.",
+    )
     parser.add_argument(
         "--manifest",
         type=Path,
@@ -1166,7 +1170,7 @@ def main(
                 f"  {plan.description}: {plan.method}, {plan.site.area_km2:,.1f} km2, "
                 f"{plan.effective_pixel_band_time:,.0f} bounded pixel-band-time"
             )
-        default_receipt = Path("generated_outputs/gee_preflight") / (
+        default_receipt = args.run_root / "gee_preflight" / (
             f"{launch[0].description}_receipt.json"
         )
         receipt_path = args.preflight_receipt or default_receipt

@@ -25,7 +25,7 @@ from typing import Any, Iterable
 
 try:
     import ee
-except ImportError:  # Pure local planning and self-tests do not need Earth Engine
+except ImportError:  # pure local planning and self-tests do not need earth engine
     ee = None
 
 
@@ -423,9 +423,9 @@ def task_band_count(year: int, half: str) -> int:
     count = len(HALF_DOYS[half])
     count += sum(doy in snow_doys for doy in HALF_DOYS[half]) * 8
     if half == "h1":
-        count += 1  # Annual NPP
+        count += 1  # annual npp
         if year <= 2024:
-            count += 2  # Two greenup cycles
+            count += 2  # two greenup cycles
     return count
 
 
@@ -1093,7 +1093,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--receipt-output",
         type=Path,
-        default=Path("generated_outputs/gee_preflight/modis_parity.json"),
+        default=Path(tempfile.gettempdir()) / "modis_parity_preflight.json",
     )
     parser.add_argument("--monthly-stop-eecu-hours", type=float, default=800)
     parser.add_argument("--watchdog-cancel-eecu-hours", type=float, default=0.005)

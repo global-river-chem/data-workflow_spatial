@@ -166,6 +166,11 @@ start_year <- as.integer(get_arg("--start-year", "2001"))
 end_year <- as.integer(get_arg("--end-year", "2023"))
 input_dir <- get_arg("--input-dir", "")
 search_dirs <- cli_values(args, "--search-dir")
+output_folder <- get_arg("--output-dir", "")
+drive_download_folder <- get_arg(
+  "--download-dir",
+  file.path(tempdir(), paste0(comparison_slug, "_gee_drive_exports"))
+)
 reference_driver_path <- get_arg("--reference-driver-path", "")
 download_from_drive <- parse_bool_arg("--download-from-drive", FALSE)
 drive_export_folder_id <- get_arg("--drive-export-folder-id", "")
@@ -200,21 +205,13 @@ if (upload_to_drive && !nzchar(drive_folder_id)) {
 if (is.na(start_year) || is.na(end_year) || start_year > end_year) {
   stop("Expected --start-year and --end-year to define a valid year range.", call. = FALSE)
 }
-
-today_tag <- format(Sys.Date(), "%Y%m%d")
-drive_download_folder <- file.path(
-  "generated_outputs",
-  paste0(comparison_slug, "_gee_drive_exports_", today_tag),
-  paste0("era5_land_", run_label, "_", start_year, "_", end_year)
-)
-generated_output_dirs <- if (dir.exists("generated_outputs")) {
-  list.dirs("generated_outputs", recursive = TRUE, full.names = TRUE)
-} else {
-  character(0)
+if (!nzchar(output_folder)) {
+  stop("Pass --output-dir with a path outside the repository.", call. = FALSE)
 }
-output_folder <- file.path(
-  "generated_outputs",
-  paste0(comparison_slug, "_era5_spatial_driver_comparison_", today_tag)
+
+drive_download_folder <- file.path(
+  drive_download_folder,
+  paste0("era5_land_", run_label, "_", start_year, "_", end_year)
 )
 
 era5_pattern <- paste0(
@@ -226,8 +223,7 @@ era5_pattern <- paste0(
 candidate_dirs <- first_existing_dir(c(
   input_dir,
   search_dirs,
-  drive_download_folder,
-  generated_output_dirs
+  drive_download_folder
 ))
 
 files_by_dir <- lapply(candidate_dirs, function(folder) {

@@ -1,0 +1,9 @@
+LTER	Stream_Name	published_area_km2	validation_source_url	validation_note
+BcCZO	BC_SW_20	NA	https://www.hydroshare.org/resource/6938ed69fb704022b40b194426cc8302/	Official Boulder Creek stream-sampling coordinate; watershed areas increase consistently downstream.
+BcCZO	BC_SW_12	NA	https://www.hydroshare.org/resource/6938ed69fb704022b40b194426cc8302/	Official Boulder Creek stream-sampling coordinate; watershed areas increase consistently downstream.
+BcCZO	BC_SW_4	NA	https://www.hydroshare.org/resource/6938ed69fb704022b40b194426cc8302/	Official Boulder Creek stream-sampling coordinate; watershed areas increase consistently downstream.
+BcCZO	BC_SW_2	NA	https://www.hydroshare.org/resource/6938ed69fb704022b40b194426cc8302/	Official Boulder Creek stream-sampling coordinate; watershed areas increase consistently downstream.
+BcCZO	GGL_SW_0	2.6252	https://czo-archive.criticalzone.org/boulder/infrastructure/field-area/gordon-gulch/	StreamStats area agrees with the published 2.6252 km2 lower Gordon Gulch area.
+BcCZO	GGU_SW_0	0.9466	https://czo-archive.criticalzone.org/boulder/infrastructure/field-area/gordon-gulch/	StreamStats area agrees with the published 0.9466 km2 upper Gordon Gulch area.
+Catalina Jemez	OR_mid	NA	https://czo-archive.criticalzone.org/catalina-jemez/infrastructure/field-area/oracle-ridge-mid-elevation/	Nested Oracle Ridge stream subwatershed within the published 1.09 km2 field catchment.
+Catalina Jemez	OR_up	NA	https://czo-archive.criticalzone.org/catalina-jemez/infrastructure/field-area/oracle-ridge-mid-elevation/	Nested Oracle Ridge stream subwatershed within the published 1.09 km2 field catchment.

@@ -1,5 +1,5 @@
-# Correct GLORICH geometries whose raw projected coordinates were assigned the
-# wrong coordinate system before being written as WGS84.
+# correct glorich geometries whose raw projected coordinates were assigned the
+# wrong coordinate system before being written as wgs84
 
 suppressPackageStartupMessages(library(sf))
 

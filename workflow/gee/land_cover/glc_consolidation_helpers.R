@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 glc_helper_path <- function() {
   source_files <- vapply(sys.frames(), function(frame) {
@@ -37,9 +37,8 @@ glc_alias_columns <- c(
 )
 glc_scale_m <- 30
 glc_default_sample_points <- 100000L
-glc_default_run_root <- "generated_outputs/gee/glc-fcs30d-safe"
 
-### Task planning
+# ---- task planning ----
 
 glc_parse_args <- function(args) {
   values <- list()
@@ -257,7 +256,7 @@ glc_plan_tasks <- function(
   plans[order_index]
 }
 
-### Shared output handling
+# ---- shared output handling ----
 
 glc_rows_to_data_frame <- function(rows, columns) {
   frames <- lapply(rows, function(row) {
@@ -281,7 +280,9 @@ glc_output_path <- function(args, run_root, output_stem, run_label) {
 run_glc_consolidation <- function(settings, args) {
   project <- args$project %||% "silica-synthesis"
   run_label <- args$run_label %||% stop("Missing --run-label")
-  run_root <- args$run_root %||% glc_default_run_root
+  run_root <- args$run_root %||% stop(
+    "Missing --run-root; use an external extraction directory"
+  )
   manifest <- args$manifest %||% file.path(
     run_root,
     "payload_manifest.csv"
@@ -407,8 +408,7 @@ run_glc_consolidation <- function(settings, args) {
     function(name) output_data[[name]]
   )
   output_data <- output_data[
-    do.call(order, order_values),
-    ,
+    do.call(order, order_values), ,
     drop = FALSE
   ]
 

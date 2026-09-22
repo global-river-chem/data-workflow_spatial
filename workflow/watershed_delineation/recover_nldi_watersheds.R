@@ -1,6 +1,6 @@
-# Recover USGS NLDI watersheds for selected site-table rows. Registered USGS
-# sites and COMIDs can be supplied in the override table; other rows use the
-# point-specific split-catchment service.
+# recover usgs nldi watersheds for selected site-table rows. registered usgs
+# sites and comids can be supplied in the override table; other rows use the
+# point-specific split-catchment service
 
 suppressPackageStartupMessages({
   library(httr2)
@@ -134,7 +134,7 @@ build_one <- function(site) {
   status <- if (!is.finite(outlet_distance_m) || outlet_distance_m > maximum_outlet_distance_m) {
     "outlet_mismatch"
   } else if (is.finite(area_difference_pct) &&
-      abs(area_difference_pct) > maximum_area_difference_pct) {
+    abs(area_difference_pct) > maximum_area_difference_pct) {
     "reference_area_mismatch"
   } else if (!is.finite(reference_area_km2)) {
     "no_independent_area_check"

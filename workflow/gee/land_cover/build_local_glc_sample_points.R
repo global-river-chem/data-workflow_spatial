@@ -1,4 +1,4 @@
-# Build deterministic equal-area sample points for large GLC watersheds
+# build deterministic equal-area sample points for large glc watersheds
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -10,7 +10,7 @@ suppressPackageStartupMessages({
 
 source(file.path("workflow", "lib", "workflow_helpers.R"))
 
-# ---- Options ----
+# ---- options ----
 
 args <- commandArgs(trailingOnly = TRUE)
 watershed_path <- cli_value(args, "--watersheds", required = TRUE)
@@ -28,7 +28,7 @@ if (!is.finite(exact_max_work) || exact_max_work <= 0) {
   stop("--exact-max-work must be a positive number.", call. = FALSE)
 }
 
-# ---- Helpers ----
+# ---- helpers ----
 
 stable_seed <- function(site_id) {
   hash <- as.character(sha256(charToRaw(enc2utf8(site_id))))
@@ -52,7 +52,7 @@ safe_sample_file <- function(site_id) {
   paste0(site_id, ".json")
 }
 
-# ---- Targets ----
+# ---- targets ----
 
 watersheds <- st_read(
   require_input_file(watershed_path, "GLC watershed layer"),
@@ -73,7 +73,7 @@ if (anyDuplicated(watersheds$site_id)) {
 watersheds <- watersheds |>
   mutate(polygon_area_km2 = as.numeric(polygon_area_km2))
 if (any(!is.finite(watersheds$polygon_area_km2)) ||
-    any(watersheds$polygon_area_km2 <= 0)) {
+  any(watersheds$polygon_area_km2 <= 0)) {
   stop("Every watershed needs a positive polygon_area_km2.", call. = FALSE)
 }
 
@@ -103,7 +103,7 @@ if (!is.null(expected_sampled_sites) && nrow(targets) != expected_sampled_sites)
   )
 }
 
-# ---- Point files ----
+# ---- point files ----
 
 sample_root <- file.path(output_root, "samples")
 prepare_output_dir(sample_root)
@@ -144,8 +144,8 @@ for (index in seq_len(nrow(targets))) {
   points_wgs84 <- st_transform(points_equal_area, 4326)
   coordinates <- unname(st_coordinates(points_wgs84)[, c("X", "Y"), drop = FALSE])
   if (any(!is.finite(coordinates)) ||
-      any(coordinates[, 1] < -180 | coordinates[, 1] > 180) ||
-      any(coordinates[, 2] < -90 | coordinates[, 2] > 90)) {
+    any(coordinates[, 1] < -180 | coordinates[, 1] > 180) ||
+    any(coordinates[, 2] < -90 | coordinates[, 2] > 90)) {
     stop("Invalid longitude or latitude for ", site$site_id, call. = FALSE)
   }
   if (anyDuplicated(data.frame(coordinates))) {

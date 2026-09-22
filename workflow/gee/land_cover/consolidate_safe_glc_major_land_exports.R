@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 major_glc_script_path <- function() {
   source_files <- vapply(sys.frames(), function(frame) {
@@ -59,7 +59,7 @@ major_output_columns <- c(
   glc_alias_columns
 )
 
-### Major-land output checks
+# ---- major-land output checks ----
 
 normalize_major_row <- function(properties) {
   row <- properties
@@ -154,7 +154,7 @@ validate_major_rows <- function(rows, plan) {
   )
 }
 
-### Major-land consolidation
+# ---- major-land consolidation ----
 
 major_land_settings <- function() {
   list(

@@ -1,14 +1,14 @@
 
 # Build size-balanced GeoJSON watershed batches for Earth Engine workflows.
 #
-# The source watershed layer is never modified. Simplification occurs in an
-# equal-area CRS and is rejected if any polygon exceeds the requested area
-# error. Generated batches and QA tables belong under generated_outputs/.
+# the source watershed layer is never modified. simplification occurs in an
+# equal-area crs and is rejected if any polygon exceeds the requested area
+# error. generated batches and qa tables belong outside the repository
 #
-# Example:
+# example:
 #   Rscript workflow/gee/build_gee_vector_payloads.R \
 #     --watersheds path/to/accepted_watersheds.gpkg \
-#     --output-root generated_outputs/gee/worldpop \
+#     --output-root /path/to/spatial-data-extractions/gee/worldpop \
 #     --payload-prefix worldpop \
 #     --simplification-profile coarse-1km \
 #     --expected-site-count 549 \
@@ -25,13 +25,8 @@ suppressPackageStartupMessages({
 source(file.path("workflow", "lib", "workflow_helpers.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
-repo_root <- silica_find_repo_root()
 watershed_path <- cli_value(args, "--watersheds", required = TRUE)
-output_root <- cli_value(
-  args,
-  "--output-root",
-  file.path(repo_root, "generated_outputs", "gee", "vector-payloads")
-)
+output_root <- cli_value(args, "--output-root", required = TRUE)
 payload_prefix <- cli_value(args, "--payload-prefix", "payload")
 property_prefix <- cli_value(args, "--property-prefix", "gee")
 profile <- cli_value(args, "--simplification-profile", "none")

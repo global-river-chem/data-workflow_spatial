@@ -13,13 +13,35 @@ requests and local MODIS work stay in `lterwg-silica-spatial`.
   files under its `config/` folder.
 - `workflow/gee/` contains the safe ERA5-Land, human-impact, and GLC-FCS30D
   workflows.
+- `workflow/appeears/` groups reviewed area requests and assembles checked
+  MODIS summary tables.
+- `workflow/aurora/stage_selected_watersheds.R` prepares checked watershed
+  bundles for the Aurora extraction workflow.
+- `workflow/release/build_spatial_dataset_files.R` splits the checked
+  harmonized inputs into product-specific release files.
 - `workflow/build_updated_watershed_asset.py` merges checked additions into an
   existing Earth Engine watershed asset without hard-coded row counts.
 - `workflow/site_reference/audit_wrtds_eligibility.R` checks every site against
   the current WRTDS input rules while retaining manual `Use_WRTDS` decisions.
 
 Product and asset settings are under `config/`; generated exports and
-temporary files do not belong in Git.
+temporary files do not belong in this checkout. Write them directly to the
+shared spatial-data extraction folder or another explicit external path.
+
+## Reviewed StreamStats recovery
+
+The StreamStats recovery accepts watersheds only for the eight sites in the
+reviewed validation table. Pass that tracked table explicitly so the evidence
+used for acceptance is reproducible.
+
+```bash
+Rscript workflow/watershed_delineation/recover_streamstats_watersheds.R \
+  --audit /path/to/watershed-site-audit.tsv \
+  --existing-watersheds /path/to/accepted-watersheds.gpkg \
+  --validation workflow/watershed_delineation/config/streamstats_reviewed_validation.tsv \
+  --output-root /path/to/streamstats-review \
+  --shapefile-root /path/to/spatial-data
+```
 
 ## WRTDS site audit
 

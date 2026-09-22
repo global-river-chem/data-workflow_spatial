@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 gee_script_path <- function() {
   source_files <- vapply(sys.frames(), function(frame) {
@@ -43,7 +43,7 @@ in_progress_usage_metric <- paste0(
   "in_progress_usage_time"
 )
 
-### General helpers
+# ---- general helpers ----
 
 iso_utc <- function(value = Sys.time()) {
   format(as.POSIXct(value, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
@@ -111,7 +111,7 @@ as_integer_or_null <- function(value) {
   if (is.null(value) || identical(value, "")) NULL else as.integer(value)
 }
 
-### Task summaries
+# ---- task summaries ----
 
 summarize_operations <- function(operations, description_prefix) {
   states <- vapply(operations, gee_operation_state, character(1))
@@ -219,7 +219,7 @@ fetch_live_inputs <- function(
   )
 }
 
-### Quota decision
+# ---- quota decision ----
 
 evaluate_preflight <- function(
   proposed_task_count,
@@ -424,7 +424,7 @@ evaluate_preflight <- function(
   )
 }
 
-### Receipt lifecycle
+# ---- receipt lifecycle ----
 
 build_receipt <- function(
   project,
@@ -656,7 +656,7 @@ consume_preflight_receipt <- function(
   invisible(receipt)
 }
 
-### Command line
+# ---- command line ----
 
 parse_cli_args <- function(args) {
   values <- list()

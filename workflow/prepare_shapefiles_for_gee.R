@@ -9,127 +9,124 @@ library(sf)
 library(stringi)
 library(zip)
 
-# ---- Configuration ----
-DEFAULT_OUTPUT_DIR <- file.path(getwd(), "outputs", "gee-ready")
-
-# ---- Name Normalization ----
+# ---- name normalization ----
 normalize_site_name <- function(name) {
   if (is.na(name) || is.null(name)) return(name)
 
   normalized <- name
 
-  # Normalize unicode characters (ä→a, é→e, ö→o, etc.)
+  # normalize unicode characters (ä→a, é→e, ö→o, etc.)
   normalized <- stringi::stri_trans_general(normalized, "Latin-ASCII")
 
-  # Lowercase
+  # lowercase
   normalized <- tolower(normalized)
 
-  # Replace spaces, hyphens, dots with underscores
+  # replace spaces, hyphens, dots with underscores
   normalized <- gsub("[[:space:]\\-\\.]+", "_", normalized)
 
-  # Remove parentheses but keep content
+  # remove parentheses but keep content
   normalized <- gsub("[()]", "_", normalized)
 
-  # Remove other special characters
+  # remove other special characters
   normalized <- gsub("[,;:'\"!@#$%^&*+=<>?/\\\\|`~\\[\\]{}]", "", normalized)
 
-  # Collapse multiple underscores
+  # collapse multiple underscores
   normalized <- gsub("_+", "_", normalized)
 
-  # Strip leading/trailing underscores
+  # strip leading/trailing underscores
   normalized <- gsub("^_|_$", "", normalized)
 
   return(normalized)
 }
 
-# ---- Main Processing Function ----
+# ---- main processing function ----
 prepare_shapefile <- function(shp_path, output_dir) {
-
-  # Get original name
+  # get original name
   original_name <- tools::file_path_sans_ext(basename(shp_path))
   normalized_name <- normalize_site_name(original_name)
 
   message(sprintf("Processing: %s -> %s", original_name, normalized_name))
 
-  tryCatch({
-    # Read shapefile
-    shp <- st_read(shp_path, quiet = TRUE)
+  tryCatch(
+    {
+      # read shapefile
+      shp <- st_read(shp_path, quiet = TRUE)
 
-    # Check and reproject to WGS84 if needed
-    current_crs <- st_crs(shp)
+      # check and reproject to wgs84 if needed
+      current_crs <- st_crs(shp)
 
-    if (is.na(current_crs)) {
-      warning(sprintf("  %s: No CRS defined, assuming WGS84", normalized_name))
-      st_crs(shp) <- 4326
-    } else if (current_crs$epsg != 4326 || is.na(current_crs$epsg)) {
-      message(sprintf("  Reprojecting from %s to WGS84",
-                      ifelse(is.na(current_crs$epsg), "unknown CRS", current_crs$epsg)))
-      shp <- st_transform(shp, 4326)
-    }
+      if (is.na(current_crs)) {
+        warning(sprintf("  %s: No CRS defined, assuming WGS84", normalized_name))
+        st_crs(shp) <- 4326
+      } else if (current_crs$epsg != 4326 || is.na(current_crs$epsg)) {
+        message(sprintf("  Reprojecting from %s to WGS84",
+          ifelse(is.na(current_crs$epsg), "unknown CRS", current_crs$epsg)))
+        shp <- st_transform(shp, 4326)
+      }
 
-    # Validate geometry
-    if (!all(st_is_valid(shp))) {
-      message("  Fixing invalid geometries")
-      shp <- st_make_valid(shp)
-    }
+      # validate geometry
+      if (!all(st_is_valid(shp))) {
+        message("  Fixing invalid geometries")
+        shp <- st_make_valid(shp)
+      }
 
-    # Create output directory for this shapefile
-    shp_output_dir <- file.path(output_dir, "shapefiles", normalized_name)
-    dir.create(shp_output_dir, recursive = TRUE, showWarnings = FALSE)
+      # create output directory for this shapefile
+      shp_output_dir <- file.path(output_dir, "shapefiles", normalized_name)
+      dir.create(shp_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-    # Write reprojected shapefile
-    output_shp <- file.path(shp_output_dir, paste0(normalized_name, ".shp"))
-    st_write(shp, output_shp, quiet = TRUE, delete_layer = TRUE)
+      # write reprojected shapefile
+      output_shp <- file.path(shp_output_dir, paste0(normalized_name, ".shp"))
+      st_write(shp, output_shp, quiet = TRUE, delete_layer = TRUE)
 
-    # Create zip file
-    zip_dir <- file.path(output_dir, "zipped")
-    dir.create(zip_dir, recursive = TRUE, showWarnings = FALSE)
-    zip_path <- file.path(zip_dir, paste0(normalized_name, ".zip"))
+      # create zip file
+      zip_dir <- file.path(output_dir, "zipped")
+      dir.create(zip_dir, recursive = TRUE, showWarnings = FALSE)
+      zip_path <- file.path(zip_dir, paste0(normalized_name, ".zip"))
 
-    # Get all shapefile components
-    shp_files <- list.files(shp_output_dir, full.names = TRUE)
+      # get all shapefile components
+      shp_files <- list.files(shp_output_dir, full.names = TRUE)
 
-    # Create zip
-    zip::zip(zip_path, files = shp_files, mode = "cherry-pick")
+      # create zip
+      zip::zip(zip_path, files = shp_files, mode = "cherry-pick")
 
-    return(list(
-      success = TRUE,
-      original = original_name,
-      normalized = normalized_name,
-      reprojected = !is.na(current_crs) && (is.na(current_crs$epsg) || current_crs$epsg != 4326)
-    ))
+      return(list(
+        success = TRUE,
+        original = original_name,
+        normalized = normalized_name,
+        reprojected = !is.na(current_crs) && (is.na(current_crs$epsg) || current_crs$epsg != 4326)
+      ))
 
-  }, error = function(e) {
-    warning(sprintf("  ERROR processing %s: %s", original_name, e$message))
-    return(list(
-      success = FALSE,
-      original = original_name,
-      normalized = normalized_name,
-      error = e$message
-    ))
-  })
+    },
+    error = function(e) {
+      warning(sprintf("  ERROR processing %s: %s", original_name, e$message))
+      return(list(
+        success = FALSE,
+        original = original_name,
+        normalized = normalized_name,
+        error = e$message
+      ))
+    })
 }
 
-# ---- Run Processing ----
+# ---- run processing ----
 process_all_shapefiles <- function(input_dir, output_dir) {
-
-  # Expand paths
+  # expand paths
   input_dir <- path.expand(input_dir)
   output_dir <- path.expand(output_dir)
 
-  # Create output directory
+  # create output directory
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Find all shapefiles
+  # find all shapefiles
   shp_files <- list.files(input_dir, pattern = "\\.shp$", full.names = TRUE)
   message(sprintf("Found %d shapefiles to process\n", length(shp_files)))
 
-  # Process each shapefile
+  # process each shapefile
   results <- lapply(shp_files, function(shp) {
     prepare_shapefile(shp, output_dir)
   })
 
-  # Summary
+  # summary
   successes <- sum(sapply(results, function(x) x$success))
   failures <- sum(sapply(results, function(x) !x$success))
   reprojected <- sum(sapply(results, function(x) x$success && isTRUE(x$reprojected)))
@@ -142,11 +139,11 @@ process_all_shapefiles <- function(input_dir, output_dir) {
   message(sprintf("\nOutput zips in: %s/zipped/", output_dir))
   message(sprintf("Ready for GEE upload!"))
 
-  # Return results for inspection
+  # return results for inspection
   invisible(results)
 }
 
-# ---- GEE Upload Functions ----
+# ---- gee upload functions ----
 
 #' Check if CLI tools are installed
 check_cli_tools <- function() {
@@ -244,10 +241,9 @@ ingest_to_gee <- function(zip_dir,
 #' # Just process, don't upload yet
 #' upload_shapefiles_to_gee("~/Downloads/new-shapefiles", upload = FALSE)
 upload_shapefiles_to_gee <- function(input_dir,
-                                      output_dir = file.path(tempdir(), "gee-upload"),
-                                      upload = TRUE) {
-
-  # Step 1: Process shapefiles (normalize names, reproject, zip)
+                                     output_dir = file.path(tempdir(), "gee-upload"),
+                                     upload = TRUE) {
+  # step 1: process shapefiles (normalize names, reproject, zip)
   message("=== Step 1: Processing shapefiles ===\n")
   results <- process_all_shapefiles(input_dir, output_dir)
 
@@ -259,7 +255,7 @@ upload_shapefiles_to_gee <- function(input_dir,
     return(invisible(results))
   }
 
-  # Step 2: Upload to GCS
+  # step 2: upload to gcs
   message("\n=== Step 2: Uploading to Google Cloud Storage ===")
   zip_dir <- file.path(output_dir, "zipped")
   gcs_ok <- upload_to_gcs(zip_dir)
@@ -270,7 +266,7 @@ upload_shapefiles_to_gee <- function(input_dir,
     return(invisible(results))
   }
 
-  # Step 3: Ingest to GEE
+  # step 3: ingest to gee
   message("\n=== Step 3: Ingesting to Google Earth Engine ===")
   ingest_to_gee(zip_dir)
 
@@ -278,19 +274,19 @@ upload_shapefiles_to_gee <- function(input_dir,
   invisible(results)
 }
 
-# ---- Execute ----
+# ---- execute ----
 if (!interactive()) {
   args <- commandArgs(trailingOnly = TRUE)
 
-  if (length(args) < 1) {
+  if (length(args) < 2) {
     stop(
-      "Usage: Rscript workflow/prepare_shapefiles_for_gee.R <input_dir> [output_dir]",
+      "Usage: Rscript workflow/prepare_shapefiles_for_gee.R <input_dir> <external_output_dir>",
       call. = FALSE
     )
   }
 
   input_dir <- args[[1]]
-  output_dir <- if (length(args) >= 2) args[[2]] else DEFAULT_OUTPUT_DIR
+  output_dir <- args[[2]]
 
   results <- process_all_shapefiles(input_dir, output_dir)
 }

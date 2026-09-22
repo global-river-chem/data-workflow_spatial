@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 modis_script_path <- function() {
   file_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
@@ -48,7 +48,7 @@ snow_calendar_rebuild_reason <- paste(
   "calendar-year days from spillover bits"
 )
 
-### Raw row checks
+# ---- raw row checks ----
 
 bind_rows_base <- function(rows) {
   columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
@@ -60,6 +60,23 @@ bind_rows_base <- function(rows) {
   out <- do.call(rbind, normalized)
   rownames(out) <- NULL
   out
+}
+
+named_file_paths <- function(directory, files) {
+  setNames(file.path(directory, unname(files)), names(files))
+}
+
+read_output_csv <- function(path, columns) {
+  character_columns <- c("site_id", "aoi_name", metadata_columns)
+  column_classes <- rep(NA_character_, length(columns))
+  column_classes[columns %in% character_columns] <- "character"
+  read.csv(
+    path,
+    stringsAsFactors = FALSE,
+    check.names = FALSE,
+    na.strings = "",
+    colClasses = column_classes
+  )
 }
 
 properties_to_row <- function(properties, asset_id) {
@@ -184,7 +201,7 @@ validate_raw_rows <- function(raw, expected_site_ids) {
 }
 
 
-### Released field treatment
+# ---- released field treatment ----
 
 one_numeric_value <- function(data, column, required = TRUE) {
   if (!column %in% names(data)) {
@@ -398,7 +415,7 @@ build_output_tables <- function(raw, expected_site_ids) {
 }
 
 
-### Output QA
+# ---- output qa ----
 
 numeric_columns <- function(data) {
   setdiff(names(data), metadata_columns)
@@ -502,7 +519,7 @@ check_output_tables <- function(outputs, expected_sites, expected_assets) {
 }
 
 
-### Local self-test
+# ---- local self-test ----
 
 synthetic_raw_rows <- function() {
   rows <- list()
@@ -566,6 +583,25 @@ synthetic_raw_rows <- function() {
 }
 
 run_self_test <- function() {
+  test_files <- c(evapo = "et.csv", npp = "npp.csv")
+  test_paths <- named_file_paths(tempdir(), test_files)
+  stopifnot(identical(names(test_paths), names(test_files)))
+
+  readback_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(readback_path), add = TRUE)
+  readback_input <- data.frame(
+    site_id = "test",
+    Discharge_File_Name = NA_character_,
+    value = 1,
+    stringsAsFactors = FALSE
+  )
+  write.csv(readback_input, readback_path, row.names = FALSE, na = "")
+  readback_output <- read_output_csv(readback_path, names(readback_input))
+  stopifnot(
+    is.character(readback_output$Discharge_File_Name),
+    is.na(readback_output$Discharge_File_Name)
+  )
+
   raw <- synthetic_raw_rows()
   source_year_row <- raw$year == 2002L & raw$half == "h2"
   raw$snow_2002_361_d8[source_year_row] <- 1
@@ -605,7 +641,7 @@ run_self_test <- function() {
 }
 
 
-### Command line
+# ---- command line ----
 
 consolidate_modis_main <- function() {
   args <- commandArgs(trailingOnly = TRUE)
@@ -622,7 +658,7 @@ consolidate_modis_main <- function() {
   asset_folder <- cli_value(args, "--asset-folder", required = TRUE)
   run_label <- cli_value(args, "--run-label", required = TRUE)
   output_root <- cli_value(args, "--output-root", required = TRUE)
-  output_tag <- cli_value(args, "--output-tag", "gee_20260815_boundary_fix")
+  output_tag <- cli_value(args, "--output-tag", "gee_modis_parity")
   expected_site_count <- cli_integer(
     args,
     "--expected-site-count",
@@ -724,8 +760,7 @@ consolidate_modis_main <- function() {
   )
   site_settings <- merge(site_settings, site_coverage, by = "site_id", sort = FALSE)
   site_settings <- site_settings[
-    match(site_ids, site_settings$site_id),
-    ,
+    match(site_ids, site_settings$site_id), ,
     drop = FALSE
   ]
   site_settings$value_coverage_fraction <- (
@@ -736,11 +771,11 @@ consolidate_modis_main <- function() {
     site_settings$interior_fallback_value_count /
       site_settings$requested_value_count
   if (nrow(site_settings) != expected_site_count ||
-      anyDuplicated(site_settings$site_id) ||
-      any(site_settings$requested_value_count !=
-        site_settings$polygon_value_count +
-          site_settings$interior_fallback_value_count +
-          site_settings$missing_value_count)) {
+    anyDuplicated(site_settings$site_id) ||
+    any(site_settings$requested_value_count !=
+      site_settings$polygon_value_count +
+        site_settings$interior_fallback_value_count +
+        site_settings$missing_value_count)) {
     stop("MODIS per-site method and coverage QA is incomplete")
   }
   qa$spatial_method_counts <- as.list(table(site_settings$extraction_method))
@@ -778,7 +813,7 @@ consolidate_modis_main <- function() {
     npp = paste0("si-extract_npp_v061_", output_tag, ".csv"),
     snow = paste0("si-extract_snow_v061_", output_tag, ".csv")
   )
-  output_paths <- file.path(stage, file_names)
+  output_paths <- named_file_paths(stage, file_names)
   for (product in names(outputs)) {
     write.csv(
       outputs[[product]],
@@ -786,18 +821,21 @@ consolidate_modis_main <- function() {
       row.names = FALSE,
       na = ""
     )
-    check <- read.csv(
+    check <- read_output_csv(
       output_paths[[product]],
-      stringsAsFactors = FALSE,
-      check.names = FALSE
+      names(outputs[[product]])
     )
-    if (!isTRUE(all.equal(
+    readback_check <- all.equal(
       outputs[[product]],
       check,
       check.attributes = FALSE,
       tolerance = 1e-12
-    ))) {
-      stop("MODIS output failed read-back QA: ", product)
+    )
+    if (!isTRUE(readback_check)) {
+      stop(
+        "MODIS output failed read-back QA for ", product, ": ",
+        paste(readback_check, collapse = "; ")
+      )
     }
   }
   qa$output_files <- file_records(output_paths, names(outputs))
@@ -813,7 +851,7 @@ consolidate_modis_main <- function() {
   saveRDS(qa, qa_path, compress = "xz")
   qa_check <- readRDS(qa_path)
   if (nrow(qa_check$spatial_method_by_site) != expected_site_count ||
-      !identical(qa_check$snow_summary_method, snow_summary_method)) {
+    !identical(qa_check$snow_summary_method, snow_summary_method)) {
     stop("MODIS QA record failed read-back QA")
   }
   if (!file.rename(stage, output_root)) {

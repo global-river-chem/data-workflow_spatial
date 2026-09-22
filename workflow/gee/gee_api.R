@@ -1,4 +1,4 @@
-### Constants
+# ---- constants ----
 
 gee_api_root <- "https://earthengine.googleapis.com/v1"
 gee_token_uri <- "https://oauth2.googleapis.com/token"
@@ -12,7 +12,7 @@ gee_client_secret <- "RUP0RZ6e0pPhDzsqIJ7KlNd1"
   if (is.null(value) || length(value) == 0) fallback else value
 }
 
-### Authentication
+# ---- authentication ----
 
 gee_access_token <- function(
   credentials_path = path.expand("~/.config/earthengine/credentials")
@@ -76,7 +76,7 @@ gee_request <- function(
   httr2::resp_body_json(response, simplifyVector = FALSE)
 }
 
-### Operations
+# ---- operations ----
 
 gee_list_operations <- function(project, token = gee_access_token()) {
   operations <- list()
@@ -128,7 +128,7 @@ gee_operation_eecu_seconds <- function(operation) {
   max(0, as.numeric(value))
 }
 
-### Assets
+# ---- assets ----
 
 gee_list_assets <- function(parent, project, token = gee_access_token()) {
   assets <- list()
@@ -206,7 +206,7 @@ gee_compute_features <- function(
   features
 }
 
-### Monitoring
+# ---- monitoring ----
 
 gee_monitoring_seconds <- function(
   project,

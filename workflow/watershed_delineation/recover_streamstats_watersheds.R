@@ -1,6 +1,6 @@
-# Screen unresolved U.S. river and stream sites with the official USGS
-# StreamStats delineation service. Successful delineations remain candidates
-# until the outlet, site identity, and drainage area pass the checks below.
+# screen unresolved u.s. river and stream sites with the official usgs
+# streamstats delineation service. successful delineations remain candidates
+# until the outlet, site identity, and drainage area pass the checks below
 
 suppressPackageStartupMessages({
   library(data.table)
@@ -18,12 +18,30 @@ audit_path <- cli_value(args, "--audit", required = TRUE)
 accepted_gpkg <- cli_value(args, "--existing-watersheds", required = TRUE)
 output_dir <- cli_value(args, "--output-root", required = TRUE)
 shapefile_root <- cli_value(args, "--shapefile-root", required = TRUE)
+validation_path <- cli_value(args, "--validation", required = TRUE)
 cache_dir <- cli_value(args, "--cache-root", file.path(tempdir(), "streamstats-recovery"))
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 
-stopifnot(file.exists(audit_path), file.exists(accepted_gpkg))
+if (!file.exists(audit_path)) stop("Missing watershed audit: ", audit_path)
+if (!file.exists(accepted_gpkg)) stop("Missing accepted watershed file: ", accepted_gpkg)
+if (!file.exists(validation_path)) {
+  stop("Missing reviewed StreamStats validation table: ", validation_path)
+}
+
+validation <- as.data.table(read_workflow_table(validation_path))
+require_columns(
+  validation,
+  c(
+    "LTER", "Stream_Name", "published_area_km2",
+    "validation_source_url", "validation_note"
+  ),
+  "StreamStats validation table"
+)
+if (anyDuplicated(validation[, .(LTER, Stream_Name)])) {
+  stop("StreamStats validation table contains duplicate site rows.")
+}
 
 safe_name <- function(x) {
   x <- iconv(x, to = "ASCII//TRANSLIT")
@@ -236,9 +254,13 @@ for (i in seq_len(nrow(candidates))) {
     reference_area_error_pct = NA_real_,
     huc_id = "",
     proposed_shapefile_name = "",
-    qa_status = if (nzchar(site$waterbody_exclusion)) site$waterbody_exclusion else
-      if (nzchar(site$alias_of)) "hold: duplicate site alias; use the primary site review" else
-        "not screened",
+    qa_status = if (nzchar(site$waterbody_exclusion)) {
+      site$waterbody_exclusion
+    } else if (nzchar(site$alias_of)) {
+      "hold: duplicate site alias; use the primary site review"
+    } else {
+      "not screened"
+    },
     source_url = streamstats_request_url(
       site$region, as.numeric(site$Latitude), as.numeric(site$Longitude)
     )
@@ -329,7 +351,7 @@ for (i in seq_len(nrow(candidates))) {
 
 status <- rbindlist(status_rows, fill = TRUE)
 
-# Copy primary-site results to explicit aliases without issuing duplicate API calls.
+# copy primary-site results to explicit aliases without issuing duplicate api calls
 for (i in which(nzchar(status$alias_of))) {
   primary_parts <- strsplit(status$alias_of[[i]], "\\|\\|")[[1]]
   primary <- status[LTER == primary_parts[[1]] & Stream_Name == primary_parts[[2]]]
@@ -385,34 +407,6 @@ if (!is.null(polygons) && nrow(polygons)) {
     polygons$qa_status[nzchar(polygons$duplicate_geometry_group)] <-
       "hold: identical watershed returned for multiple site labels"
   }
-
-  # These eight sites have independent project documentation and clean,
-  # physically consistent StreamStats results. The nested-area checks guard
-  # against accepting a polygon snapped to the wrong branch of the network.
-  validation <- data.table(
-    LTER = c(
-      rep("BcCZO", 6),
-      rep("Catalina Jemez", 2)
-    ),
-    Stream_Name = c(
-      "BC_SW_20", "BC_SW_12", "BC_SW_4", "BC_SW_2",
-      "GGL_SW_0", "GGU_SW_0", "OR_mid", "OR_up"
-    ),
-    published_area_km2 = c(
-      NA, NA, NA, NA, 2.6252, 0.9466, NA, NA
-    ),
-    validation_source_url = c(
-      rep("https://www.hydroshare.org/resource/6938ed69fb704022b40b194426cc8302/", 4),
-      rep("https://czo-archive.criticalzone.org/boulder/infrastructure/field-area/gordon-gulch/", 2),
-      rep("https://czo-archive.criticalzone.org/catalina-jemez/infrastructure/field-area/oracle-ridge-mid-elevation/", 2)
-    ),
-    validation_note = c(
-      rep("Official Boulder Creek stream-sampling coordinate; watershed areas increase consistently downstream.", 4),
-      "StreamStats area agrees with the published 2.6252 km2 lower Gordon Gulch area.",
-      "StreamStats area agrees with the published 0.9466 km2 upper Gordon Gulch area.",
-      rep("Nested Oracle Ridge stream subwatershed within the published 1.09 km2 field catchment.", 2)
-    )
-  )
 
   status[, `:=`(
     final_decision = "hold",

@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 watchdog_script_path <- function() {
   source_files <- vapply(sys.frames(), function(frame) {
@@ -25,7 +25,7 @@ watchdog_active_states <- c(
   "CANCELLING"
 )
 
-### Helpers
+# ---- helpers ----
 
 watchdog_parse_args <- function(args) {
   values <- list()
@@ -74,7 +74,7 @@ append_watchdog_event <- function(path, event) {
   }
 }
 
-### Monitor
+# ---- monitor ----
 
 watchdog_main <- function() {
   args <- watchdog_parse_args(commandArgs(trailingOnly = TRUE))

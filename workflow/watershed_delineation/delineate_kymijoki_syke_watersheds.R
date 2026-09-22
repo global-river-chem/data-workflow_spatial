@@ -42,8 +42,8 @@ sites_sf <- st_as_sf(
 )
 sites_3067 <- st_transform(sites_sf, 3067)
 
-# These archives are official SYKE products. The source CRS is EPSG:3067;
-# AppEEARS/GEE copies are written as EPSG:4326 below.
+# these archives are official syke products. the source crs is epsg:3067;
+# appeears/gee copies are written as epsg:4326 below.
 network <- st_read(
   paste0("/vsizip/", network_archive),
   layer = "Uoma10",
@@ -69,9 +69,9 @@ if (!all(required_catchments %in% names(catchments))) {
   stop("SYKE level-5 catchments are missing required fields.", call. = FALSE)
 }
 
-# Restrict the expensive spatial matching to Kymijoki and its headwaters.
-# When the old shared geometry is available, use only its bounding box as a
-# search index. The old geometry is never used as a watershed result.
+# restrict the expensive spatial matching to kymijoki and its headwaters.
+# when the old shared geometry is available, use only its bounding box as a
+# search index. the old geometry is never used as a watershed result.
 if (nzchar(old_geometry) && file.exists(old_geometry)) {
   old <- st_read(old_geometry, quiet = TRUE)
   old <- old[old$shp_nm == "Kymijoen vesistoalue", ]
@@ -88,8 +88,8 @@ outlets <- outlets[
   st_intersects(outlets, search_box, sparse = FALSE)[, 1],
 ]
 
-# Uoma10 stores the upstream node in uomapistei and the downstream node in
-# uomapist00. This direction is checked by the node elevations in the SYKE
+# uoma10 stores the upstream node in uomapistei and the downstream node in
+# uomapist00. this direction is checked by the node elevations in the syke
 # data and is used to walk upstream from each monitoring location.
 upstream_by_downstream <- split(
   as.character(network$uomapistei),

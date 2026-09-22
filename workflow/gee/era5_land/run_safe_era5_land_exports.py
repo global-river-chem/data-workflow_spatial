@@ -17,6 +17,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -28,7 +29,7 @@ from typing import Any, Iterable
 
 try:
     import ee
-except ImportError:  # Keep pure planning helpers importable in unit tests.
+except ImportError:  # keep pure planning helpers importable in unit tests
     ee = None
 
 
@@ -74,7 +75,7 @@ TRANSIENT_ERROR_MARKERS = (
 )
 
 
-# ---- Products and task records ----
+# ---- products and task records ----
 
 
 @dataclass(frozen=True)
@@ -175,7 +176,7 @@ class TaskPlan:
     effective_pixel_band_days: float
 
 
-# ---- Input parsing ----
+# ---- input parsing ----
 
 
 def parse_integer_selection(value: str, minimum: int, maximum: int) -> tuple[int, ...]:
@@ -432,7 +433,7 @@ def safe_asset_part(value: str) -> str:
     return cleaned
 
 
-# ---- Task planning ----
+# ---- task planning ----
 
 
 def plan_tasks(
@@ -486,8 +487,8 @@ def plan_tasks(
                         effective_pixel_band_days=estimated_work,
                     )
                 )
-    # Finish each calendar month across every payload before moving forward.
-    # Within a month, run the largest payload first as the smoke test.
+    # finish each calendar month across every payload before moving forward
+    # within a month, run the largest payload first as the smoke test
     return sorted(
         plans,
         key=lambda item: (
@@ -539,7 +540,7 @@ def attach_verified_payload(plan: TaskPlan, payload: Payload) -> TaskPlan:
     )
 
 
-# ---- Earth Engine exports ----
+# ---- earth engine exports ----
 
 
 def operation_list() -> list[dict[str, Any]]:
@@ -858,7 +859,7 @@ def launch_site_count(plans: Iterable[TaskPlan]) -> int:
     return sum(unique.values())
 
 
-# ---- Submission records ----
+# ---- submission records ----
 
 
 def print_plan(plans: list[TaskPlan], missing_count: int) -> None:
@@ -979,7 +980,7 @@ def write_task_log(path: Path, plans: list[TaskPlan], task_ids: list[str]) -> No
     path.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
 
 
-# ---- Command line ----
+# ---- command line ----
 
 
 def parse_args() -> argparse.Namespace:
@@ -1016,7 +1017,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--receipt-output",
         type=Path,
-        default=Path("generated_outputs/gee_preflight/era5_land.json"),
+        default=Path(tempfile.gettempdir()) / "era5_land_preflight.json",
         help="Where the printed preflight command should write its receipt.",
     )
     parser.add_argument("--task-log", type=Path)

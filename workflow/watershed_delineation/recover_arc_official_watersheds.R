@@ -6,18 +6,18 @@ suppressPackageStartupMessages({
 
 source(file.path("workflow", "lib", "workflow_helpers.R"))
 
-# Recover ARC watersheds from official Arctic LTER, Toolik, UAF, EDI, and
-# USGS sources. The script keeps long-term stream sites separate from the
-# Kuparuk synoptic sites and does not turn the Tussock soil-water points into
+# recover arc watersheds from official arctic lter, toolik, uaf, edi, and
+# usgs sources. the script keeps long-term stream sites separate from the
+# kuparuk synoptic sites and does not turn the tussock soil-water points into
 # river watersheds.
 #
-# The ARC LTER subwatershed archive URL below is kept as provenance, but the
-# legacy host currently returns HTTP
-# 403 and the current ARC page says the GIS layers are not yet available for
-# direct download. Therefore, boundaries generated in this run are explicitly
-# labeled either as official Toolik/UAF supplied polygons or as USGS 3DEP
-# delineations conditioned on the official Toolik stream network. They must not
-# be described as polygons downloaded from the unavailable ARC ZIP.
+# the arc lter subwatershed archive url below is kept as provenance, but the
+# legacy host currently returns http
+# 403 and the current arc page says the gis layers are not yet available for
+# direct download. therefore, boundaries generated in this run are explicitly
+# labeled either as official toolik/uaf supplied polygons or as usgs 3dep
+# delineations conditioned on the official toolik stream network. they must not
+# be described as polygons downloaded from the unavailable arc zip.
 
 args <- commandArgs(trailingOnly = TRUE)
 site_table_path <- cli_value(args, "--site-table", required = TRUE)
@@ -158,7 +158,7 @@ slug_name <- function(x) {
 }
 site_table$site_key <- key_name(site_table$Stream_Name)
 
-# Count years with measured DSi in the official long-term ARC chemistry data.
+# count years with measured dsi in the official long-term arc chemistry data.
 chem_names <- names(read.csv(chemistry_csv, nrows = 1, check.names = FALSE))
 chemistry <- read.csv(
   chemistry_csv, skip = 4, header = FALSE, check.names = FALSE,
@@ -176,8 +176,8 @@ names(dsi_years)[2] <- "dsi_years"
 site_table <- merge(site_table, dsi_years, by = "site_key", all.x = TRUE, sort = FALSE)
 site_table$dsi_years[is.na(site_table$dsi_years)] <- 0L
 
-# The official workbook supplies exact coordinates and identifies TW 01-14 as
-# soil-water sampling points. Use its coordinates when they are present.
+# the official workbook supplies exact coordinates and identifies tw 01-14 as
+# soil-water sampling points. use its coordinates when they are present.
 metadata <- read_excel(chemistry_xlsx, sheet = "Metadata", col_names = FALSE)
 first_column <- trimws(as.character(metadata[[1]]))
 row_at <- function(label) {
@@ -219,7 +219,7 @@ site_table$decision[site_table$site_key == "lter 345 outlet"] <-
 site_table$decision[site_table$site_key == "tw weir"] <-
   "hold_exact_one_hectare_boundary_not_recovered"
 
-# Keep one canonical row for repeated labels and case-only duplicates.
+# keep one canonical row for repeated labels and case-only duplicates.
 site_table$canonical_row <- !duplicated(site_table$site_key)
 site_table$decision[!site_table$canonical_row] <- "duplicate_table_row"
 
@@ -227,7 +227,7 @@ current_candidates <- site_table[
   site_table$decision == "review_for_watershed" & site_table$canonical_row,
 ]
 
-# Prepare the official stream-conditioned USGS 3DEP surface when cached
+# prepare the official stream-conditioned usgs 3dep surface when cached
 # products have not already been supplied.
 dem_path <- Sys.getenv(
   "ARC_DEM_PATH", unset = file.path(work_dir, "arc_usgs_3dep_10m_utm6.tif")
@@ -343,8 +343,8 @@ for (i in seq_len(nrow(selected))) {
 selected_points <- selected_points[!vapply(selected_points, is.null, logical(1))]
 selected_points <- do.call(rbind, selected_points)
 
-# Prevent separate monitoring rows from silently receiving the same raster
-# outlet. Only exact duplicate table rows have already been collapsed above.
+# prevent separate monitoring rows from silently receiving the same raster
+# outlet. only exact duplicate table rows have already been collapsed above.
 if (nrow(selected_points)) {
   outlet_xy <- st_coordinates(selected_points)
   outlet_key <- paste(round(outlet_xy[, 1], 3), round(outlet_xy[, 2], 3))
@@ -413,8 +413,8 @@ for (i in seq_len(nrow(selected_points))) {
   )
 }
 
-# Toolik Inlet is supplied directly by Toolik. Toolik Outlet uses the UAF
-# Toolik Lake tributary basin (hydro code 3), which is the full lake-outlet
+# toolik inlet is supplied directly by toolik. toolik outlet uses the uaf
+# toolik lake tributary basin (hydro code 3), which is the full lake-outlet
 # catchment rather than the smaller inlet-only watershed.
 core_match <- function(pattern) {
   hit <- core_files[grepl(pattern, basename(core_files), ignore.case = TRUE)]
@@ -473,9 +473,9 @@ write.table(
   sep = "\t", quote = FALSE, row.names = FALSE, na = ""
 )
 
-# Audit the 2016-2018 Kuparuk synoptic sites against their published EDI
-# drainage areas. These rows have three chemistry years and are not included
-# in the current AppEEARS request, but accepted boundaries are retained for
+# audit the 2016-2018 kuparuk synoptic sites against their published edi
+# drainage areas. these rows have three chemistry years and are not included
+# in the current appeears request, but accepted boundaries are retained for
 # table metadata and possible later use.
 synoptic <- read.csv(synoptic_csv, check.names = FALSE, stringsAsFactors = FALSE)
 latest_kup <- unique(synoptic[
@@ -532,8 +532,8 @@ write.table(
   sep = "\t", quote = FALSE, row.names = FALSE, na = ""
 )
 
-# Write the Kuparuk synoptic boundaries that passed the independent EDI-area
-# check. The source chemistry record covers only 2016-2018 (three years).
+# write the kuparuk synoptic boundaries that passed the independent edi-area
+# check. the source chemistry record covers only 2016-2018 (three years).
 kuparuk_output <- file.path(output_root, "kuparuk-reference-only")
 dir.create(kuparuk_output, recursive = TRUE, showWarnings = FALSE)
 for (i in which(kup_audit$accepted)) {

@@ -1,6 +1,6 @@
 
-# Combine downloaded daily ERA5-Land CSVs and derive calendar-month summaries.
-# Weekly summaries are optional and use Monday-through-Sunday ISO-style weeks.
+# combine downloaded daily era5-land csvs and derive calendar-month summaries
+# weekly summaries are optional and use monday-through-sunday iso-style weeks
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -10,13 +10,8 @@ suppressPackageStartupMessages({
 source(file.path("workflow", "lib", "workflow_helpers.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
-repo_root <- silica_find_repo_root()
 input_path <- cli_value(args, "--daily-input", required = TRUE)
-output_root <- cli_value(
-  args,
-  "--output-root",
-  file.path(repo_root, "generated_outputs", "gee", "era5-land-rollups")
-)
+output_root <- cli_value(args, "--output-root", required = TRUE)
 write_weekly <- cli_boolean(args, "--write-weekly", FALSE)
 
 input_path <- normalizePath(input_path, mustWork = TRUE)

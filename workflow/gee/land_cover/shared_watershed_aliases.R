@@ -1,4 +1,4 @@
-### Shared watersheds
+# ---- shared watersheds ----
 
 read_shared_watershed_aliases <- function(path) {
   aliases <- read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)

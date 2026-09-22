@@ -44,6 +44,7 @@ and Earth Engine cost before allowing a larger batch.
 
 ```bash
 python3 workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py \
+  --run-root PATH/TO/glc-run \
   --manifest PATH/TO/payload_manifest.csv \
   --local-point-manifest PATH/TO/glc-local-points/point_sample_manifest.csv \
   --project PROJECT \
@@ -78,6 +79,7 @@ while preserving the task names used by the current run.
 
 ```bash
 python3 workflow/gee/land_cover/run_safe_glc_major_land_exports.py \
+  --run-root PATH/TO/major-land-run \
   --manifest PATH/TO/payload_manifest.csv \
   --local-point-manifest PATH/TO/glc-local-points/point_sample_manifest.csv \
   --project PROJECT \
@@ -100,6 +102,7 @@ Annual class areas:
 
 ```bash
 Rscript workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R \
+  --run-root PATH/TO/glc-run \
   --manifest PATH/TO/payload_manifest.csv \
   --project PROJECT \
   --run-label RELEASE_NAME \
@@ -111,6 +114,7 @@ Major land cover:
 
 ```bash
 Rscript workflow/gee/land_cover/consolidate_safe_glc_major_land_exports.R \
+  --run-root PATH/TO/major-land-run \
   --manifest PATH/TO/payload_manifest.csv \
   --project PROJECT \
   --run-label major_land_RELEASE_NAME \

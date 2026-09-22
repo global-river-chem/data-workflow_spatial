@@ -149,7 +149,7 @@ cast_like <- function(value, example, column) {
   } else if (is.logical(example)) {
     normalized <- tolower(trimws(as.character(value)))
     output <- ifelse(is.na(value) | normalized == "", NA,
-                     normalized %in% c("true", "t", "1", "yes"))
+      normalized %in% c("true", "t", "1", "yes"))
   } else {
     output <- as.character(value)
   }

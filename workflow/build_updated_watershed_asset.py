@@ -145,7 +145,7 @@ def main() -> None:
     current_features = load_features(args.current_geojson)
 
     # Match on source labels instead of site_id so corrected IDs can be carried
-    # forward without changing an unchanged geometry.
+    # forward without changing an unchanged geometry
     current_by_match_key = {site_match_key(f): f for f in current_features}
     base_match_keys = {site_match_key(f) for f in base_features}
     base_count = len(base_features)
@@ -201,8 +201,8 @@ def main() -> None:
     else:
         raise ValueError("Could not find the baseline asset.")
 
-    # Check both source assets before starting a server-side export.  This
-    # prevents a similarly named staging table from entering production.
+    # check both source assets before starting a server-side export.  this
+    # prevents a similarly named staging table from entering production
     base_collection = ee.FeatureCollection(base_source_asset)
     additions_collection = ee.FeatureCollection(args.additions_asset)
     base_rows = base_collection.size().getInfo()
@@ -219,8 +219,8 @@ def main() -> None:
 
     base_update_dictionary = ee.Dictionary(base_updates)
 
-    # Shapefile uploads shortened several DBF field names.  Rename them to the
-    # descriptive names expected by the extraction and QA workflows.
+    # shapefile uploads shortened several dbf field names.  rename them to the
+    # descriptive names expected by the extraction and qa workflows
     base_source_fields = (
         "site_id",
         "run_grp",
@@ -274,7 +274,7 @@ def main() -> None:
         )
 
     def standardize_addition(feature):
-        # Addition uploads may omit the optional discharge-file field.
+        # addition uploads may omit the optional discharge-file field
         return feature.select(
             list(additions_source_fields), list(additions_destination_fields)
         ).set(
@@ -297,7 +297,7 @@ def main() -> None:
         print(f"Started Earth Engine task: {task.id}", flush=True)
         wait_for_task(task, args.poll_seconds)
 
-    # Treat the asset as ready only after its IDs and schema match the local file.
+    # treat the asset as ready only after its ids and schema match the local file
     output = ee.FeatureCollection(args.output_asset)
     output_rows = output.size().getInfo()
     output_site_ids = set(output.aggregate_array("site_id").getInfo())
@@ -317,8 +317,8 @@ def main() -> None:
     print(f"Distinct site IDs: {current_count}")
 
     if args.archive_base:
-        # Archive only after the production checks above pass.  Repeated runs
-        # recognize the completed move and verify the archived table in place.
+        # archive only after the production checks above pass.  repeated runs
+        # recognize the completed move and verify the archived table in place
         if active_base_exists:
             if archived_base_exists:
                 raise ValueError(

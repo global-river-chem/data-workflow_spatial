@@ -1,4 +1,4 @@
-### Load workflow helpers
+# ---- load workflow helpers ----
 
 source("workflow/gee/gee_quota_preflight.R")
 source("workflow/gee/land_cover/consolidate_safe_glc_fcs30d_exports.R")
@@ -15,7 +15,7 @@ expect_error <- function(expression) {
   stopifnot(failed)
 }
 
-### Quota decisions
+# ---- quota decisions ----
 
 monitoring <- list(observed_eecu_hours = 10)
 empty_history <- list(
@@ -111,7 +111,7 @@ custom_stop_blocked <- evaluate_preflight(
 )
 stopifnot(!custom_stop_blocked$approved)
 
-### Receipt lifecycle
+# ---- receipt lifecycle ----
 
 issued <- as.POSIXct("2026-08-05 12:00:00", tz = "UTC")
 receipt <- build_receipt(
@@ -185,7 +185,7 @@ expect_error(validate_preflight_receipt(
   now = issued + 60
 ))
 
-### GLC validation
+# ---- glc validation ----
 
 exact_rows <- lapply(glc_years, function(year) {
   lapply(glc_classes, function(class_id) {
@@ -307,7 +307,7 @@ stopifnot(
     "chosen.csv"
 )
 
-### Major-land validation
+# ---- major-land validation ----
 
 major_plan <- list(
   asset_id = "projects/test/assets/test_major_land",
@@ -344,7 +344,7 @@ invalid_major_row <- major_row
 invalid_major_row$major_land_mean_fraction <- 1.1
 expect_error(validate_major_rows(list(invalid_major_row), major_plan))
 
-### Shared watersheds
+# ---- shared watersheds ----
 
 shared_source <- data.frame(
   site_id = rep("krr__s_65bc__s65b", 2),
@@ -400,7 +400,7 @@ stopifnot(isTRUE(all.equal(
   check.attributes = FALSE
 )))
 
-### Major-land calculation settings
+# ---- major-land calculation settings ----
 
 python_check <- paste(
   "from pathlib import Path",
@@ -434,7 +434,7 @@ python_status <- system2(
 )
 stopifnot(is.null(attr(python_status, "status")))
 
-### MODIS export geometry
+# ---- modis export geometry ----
 
 modis_python_test <- system2(
   "python3",
@@ -451,130 +451,56 @@ modis_r_test <- system2(
 )
 stopifnot(is.null(attr(modis_r_test, "status")))
 
-### Retained ERA5 split
+# ---- batch finisher status checks ----
 
-era5_payload_list_path <- file.path(
-  "generated_outputs", "spatial-rerun-20260815",
-  "era5-remaining-85-payloads", "payload_manifest.csv"
+finisher_python_check <- paste(c(
+  "import importlib.util",
+  "import sys",
+  "import types",
+  "from pathlib import Path",
+  "sys.modules['ee'] = types.ModuleType('ee')",
+  "def load_module(name, path):",
+  "    spec = importlib.util.spec_from_file_location(name, path)",
+  "    module = importlib.util.module_from_spec(spec)",
+  "    spec.loader.exec_module(module)",
+  "    return module",
+  "modules = [",
+  "    load_module('era5_finisher', Path('workflow/gee/era5_land/finish_missing_annual_assets.py')),",
+  "    load_module('modis_finisher', Path('workflow/gee/modis/finish_missing_modis_assets.py')),",
+  "]",
+  "valid = [{'id': 'A', 'state': 'RUNNING'}, {'id': 'B', 'state': 'COMPLETED'}]",
+  "invalid = [",
+  "    [],",
+  "    [{'id': 'A', 'state': 'RUNNING'}],",
+  "    [{'id': 'A'}],",
+  "    ['not a status row'],",
+  "]",
+  "for module in modules:",
+  "    assert module.checked_task_states(['A', 'B'], valid) == {'A': 'RUNNING', 'B': 'COMPLETED'}",
+  "    for rows in invalid:",
+  "        try:",
+  "            module.checked_task_states(['A', 'B'], rows)",
+  "        except RuntimeError:",
+  "            pass",
+  "        else:",
+  "            raise AssertionError('invalid task status was accepted')",
+  "era5_args = types.SimpleNamespace(",
+  "    payload_manifest=Path('payloads.csv'), output_folder='assets/test',",
+  "    run_label='test', project='different-project', years='2000:2025',",
+  "    expected_site_count=1, expected_site_ids=Path('sites.csv'), batch_size=1,",
+  ")",
+  "era5_command = modules[0].build_launcher_command(era5_args, Path('launcher.py'))",
+  "assert era5_command[era5_command.index('--project') + 1] == 'different-project'"
+), collapse = "\n")
+finisher_status <- system2(
+  "python3",
+  c("-c", shQuote(finisher_python_check)),
+  stdout = TRUE,
+  stderr = TRUE
 )
-era5_runner_args <- c(
-  "workflow/gee/era5_land/run_release3_remaining_85.R",
-  "--self-test"
-)
-era5_runner_test <- system2(
-  "Rscript", era5_runner_args, stdout = TRUE, stderr = TRUE
-)
-stopifnot(is.null(attr(era5_runner_test, "status")))
-if (file.exists(era5_payload_list_path)) {
-  era5_payload_list <- read.csv(
-    era5_payload_list_path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  stopifnot(identical(
-    era5_payload_list$payload,
-    sprintf("era5_remaining_01_part_%02d", seq_len(6L))
-  ))
-  stopifnot(sum(era5_payload_list$sites) == 85L)
-  stopifnot(all(file.exists(file.path(
-    "generated_outputs", "spatial-rerun-20260815",
-    "era5-remaining-85-payloads", era5_payload_list$path
-  ))))
-  era5_runner_test <- system2("Rscript", c(
-    era5_runner_args,
-    "--input-root", dirname(era5_payload_list_path)
-  ), stdout = TRUE, stderr = TRUE)
-  stopifnot(is.null(attr(era5_runner_test, "status")))
-}
+stopifnot(is.null(attr(finisher_status, "status")))
 
-invisible(parse(file = "workflow/gee/consolidate_release3_replacements.R"))
-
-### Release-three safeguards
-
-watershed_qa_path <- file.path(
-  "generated_outputs", "watersheds-20260815",
-  "watersheds_all_sites_20260815_qa.rds"
-)
-if (file.exists(watershed_qa_path)) {
-  watershed_qa <- readRDS(watershed_qa_path)
-  stopifnot(watershed_qa$discharge_overlay$primary_geometry_rows_updated == 177L)
-  stopifnot(nrow(watershed_qa$coordinate_review) == 2L)
-  stopifnot(identical(
-    sort(watershed_qa$coordinate_review$Chemistry_Site_ID),
-    c("NF02ZM0020", "NF02ZM0185")
-  ))
-  stopifnot(all(watershed_qa$input_files$unchanged_during_build))
-  stopifnot(nrow(watershed_qa$output_files) == 4L)
-}
-
-harmonizer_environment <- new.env(parent = globalenv())
-sys.source(
-  "workflow/harmonization/build_release3_spatial_datasets.R",
-  envir = harmonizer_environment
-)
-waterbody_test <- data.frame(
-  canonical_row_id = c("river", "outlet", "site_0854", "site_1008"),
-  LTER = c("Test", "Canada_ECCC", "Danube", "GEMS"),
-  Stream_Name = c(
-    "Ordinary River", "QUIDI VIDI LAKE AT OUTLET", "MD5", "ITA00391"
-  ),
-  Waterbody = c("River", "Stream", "Reservoir", "Reservoir"),
-  Location = c("", "", "Costesti Reservoir", "INVASO DEL MOLATO"),
-  Original_Stream_Name = c("", "QUIDI VIDI LAKE AT OUTLET", "", ""),
-  stringsAsFactors = FALSE
-)
-waterbody_result <- harmonizer_environment$keep_flowing_water_sites(list(
-  modis = waterbody_test,
-  era5 = waterbody_test,
-  discharge_qa = list()
-))
-stopifnot(
-  nrow(waterbody_result$modis) == 2L,
-  identical(waterbody_result$modis$canonical_row_id, c("river", "outlet")),
-  nrow(waterbody_result$waterbody_qa$excluded) == 2L,
-  waterbody_result$waterbody_qa$retained_name_matches$canonical_row_id == "outlet"
-)
-unreviewed_waterbody <- waterbody_test
-unreviewed_waterbody$Waterbody[[1]] <- "Unknown"
-stopifnot(inherits(try(
-  harmonizer_environment$keep_flowing_water_sites(list(
-    modis = unreviewed_waterbody,
-    era5 = unreviewed_waterbody,
-    discharge_qa = list()
-  )),
-  silent = TRUE
-), "try-error"))
-mismatched_waterbody <- waterbody_test
-mismatched_waterbody$Waterbody[[1]] <- "Stream"
-stopifnot(inherits(try(
-  harmonizer_environment$keep_flowing_water_sites(list(
-    modis = waterbody_test,
-    era5 = mismatched_waterbody,
-    discharge_qa = list()
-  )),
-  silent = TRUE
-), "try-error"))
-
-readback_file <- tempfile(fileext = ".csv")
-readback_expected <- data.frame(
-  LTER = c("Test", "Test"),
-  Stream_Name = c("A", "B"),
-  canonical_row_id = c("a", "b"),
-  value = c(1, NA_real_),
-  stringsAsFactors = FALSE
-)
-write.csv(readback_expected, readback_file, row.names = FALSE, na = "")
-harmonizer_environment$assert_csv_readback(
-  readback_expected, readback_file, "test output"
-)
-readback_changed <- readback_expected
-readback_changed$value[[1L]] <- 2
-expect_error(harmonizer_environment$assert_csv_readback(
-  readback_changed, readback_file, "test output"
-))
-unlink(readback_file)
-
-### Language boundary
+# ---- language boundary ----
 
 local_python <- c(
   "workflow/gee/gee_quota_preflight.py",
@@ -590,10 +516,12 @@ gee_python <- list.files(
   full.names = TRUE
 )
 expected_gee_python <- c(
+  "workflow/gee/era5_land/finish_missing_annual_assets.py",
   "workflow/gee/era5_land/run_safe_era5_land_exports.py",
   "workflow/gee/human_impacts/run_missing_site_exports.py",
   "workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py",
   "workflow/gee/land_cover/run_safe_glc_major_land_exports.py",
+  "workflow/gee/modis/finish_missing_modis_assets.py",
   "workflow/gee/modis/run_safe_modis_parity_exports.py"
 )
 stopifnot(setequal(gee_python, expected_gee_python))

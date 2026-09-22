@@ -1,4 +1,4 @@
-# Build current GEE target layers without rerunning accepted prior coverage.
+# build current gee target layers without rerunning accepted prior coverage
 
 suppressPackageStartupMessages({
   library(dplyr)

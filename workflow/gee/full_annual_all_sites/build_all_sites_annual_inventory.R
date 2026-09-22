@@ -42,24 +42,15 @@ start_year <- as.integer(get_arg("--start-year", "2000"))
 end_year <- as.integer(get_arg("--end-year", "2025"))
 input_dir <- get_arg("--input-dir", "")
 search_dirs <- cli_values(args, "--search-dir")
-output_dir <- get_arg(
-  "--output-dir",
-  file.path(
-    "generated_outputs",
-    paste0(slug, "_era5_land_inventory_", format(Sys.Date(), "%Y%m%d"))
-  )
-)
+output_dir <- get_arg("--output-dir", "")
 allow_missing_years <- parse_bool_arg("--allow-missing-years", FALSE)
 write_parquet <- parse_bool_arg("--write-parquet", TRUE)
 
 if (is.na(start_year) || is.na(end_year) || start_year > end_year) {
   stop("Expected --start-year and --end-year to define a valid year range.", call. = FALSE)
 }
-
-generated_output_dirs <- if (dir.exists("generated_outputs")) {
-  list.dirs("generated_outputs", recursive = TRUE, full.names = TRUE)
-} else {
-  character(0)
+if (!nzchar(output_dir)) {
+  stop("Pass --output-dir with a path outside the repository.", call. = FALSE)
 }
 
 era5_pattern <- paste0(
@@ -70,8 +61,7 @@ era5_pattern <- paste0(
 
 candidate_dirs <- first_existing_dir(c(
   input_dir,
-  search_dirs,
-  generated_output_dirs
+  search_dirs
 ))
 
 files_by_dir <- lapply(candidate_dirs, function(folder) {

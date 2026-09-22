@@ -50,7 +50,7 @@ SUPPORTED_DATASETS = (
     "wastewater",
 )
 POPULATION_DATASETS = ("population", "ghsl_population")
-# Required for global watershed reductions.
+# required for global watershed reductions
 MAX_REDUCE_REGION_PIXELS = 10_000_000_000_000
 
 
@@ -280,7 +280,7 @@ def extract_population(
         .setDefaultProjection(projection)
     )
 
-    # Work with density so a finer retry cannot duplicate people in a grid cell.
+    # work with density so a finer retry cannot duplicate people in a grid cell
     native_pixel_area = ee.Image.pixelArea().reproject(projection)
     density_name = dataset["density_output_name"]
     population_density = (
@@ -374,7 +374,7 @@ def extract_fertilizer(
     output_names = []
 
     for nutrient, nutrient_config in dataset["nutrients"].items():
-        # This is a crop-rate comparison, not total fertilizer mass.
+        # this is a crop-rate comparison, not total fertilizer mass
         nutrient_collection = collection.filter(
             ee.Filter.eq(dataset["nutrient_property"], nutrient)
         )

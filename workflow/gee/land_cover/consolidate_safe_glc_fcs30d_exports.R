@@ -1,4 +1,4 @@
-### Setup
+# ---- setup ----
 
 annual_glc_script_path <- function() {
   source_files <- vapply(sys.frames(), function(frame) {
@@ -45,7 +45,7 @@ glc_output_columns <- c(
 glc_sample_closure_tolerance <- 1e-6
 glc_exact_boundary_tolerance <- 0.01
 
-### Annual output checks
+# ---- annual output checks ----
 
 glc_normalize_row <- function(properties) {
   row <- properties
@@ -206,7 +206,7 @@ glc_validate_asset_rows <- function(rows, plan) {
   )
 }
 
-### Annual consolidation
+# ---- annual consolidation ----
 
 annual_glc_settings <- function() {
   list(

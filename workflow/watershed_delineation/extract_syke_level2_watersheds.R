@@ -1,5 +1,5 @@
-# Extract configured Finnish watersheds from the national SYKE level-2 basin
-# layer and check that each station lies in its selected basin.
+# extract configured finnish watersheds from the national syke level-2 basin
+# layer and check that each station lies in its selected basin
 
 suppressPackageStartupMessages(library(sf))
 
