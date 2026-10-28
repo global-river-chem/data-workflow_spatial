@@ -1,3 +1,61 @@
+# recognize ferguson even if its shape name was changed in the site table
+needs_verified_boundary <- function(data) {
+  selected <- rep(FALSE, nrow(data))
+  if ("Shapefile_Name" %in% names(data)) {
+    selected <- selected | data$Shapefile_Name %in%
+      "WesternAustralia_hydrosheds_Ferguson_River_Dowdells_Rd_Bridge"
+  }
+  if (all(c("LTER", "Stream_Name") %in% names(data))) {
+    selected <- selected | (data$LTER %in% "WesternAustralia" &
+      data$Stream_Name %in% "Ferguson River - Dowdells Rd Bridge")
+  }
+  selected
+}
+
+# download the reviewed boundary once and keep it outside the repository
+read_verified_boundary_updates <- function(path = "", required = TRUE, download = TRUE) {
+  if (!nzchar(path)) path <- Sys.getenv("SISYN_BOUNDARY_UPDATES", "")
+  if (!required && !nzchar(path)) return(NULL)
+  expected_md5 <- "09f470ffc7f1a73ca1716862700e6d5f"
+  check_file <- function(file) {
+    if (!file.exists(file)) stop("Missing corrected Ferguson boundary: ", file, call. = FALSE)
+    if (unname(tools::md5sum(file)) != expected_md5) {
+      stop("Ferguson boundary does not match the reviewed file: ", file, call. = FALSE)
+    }
+  }
+  if (!nzchar(path)) {
+    cache <- Sys.getenv("SISYN_SPATIAL_CACHE", tools::R_user_dir("sisyn-spatial", "cache"))
+    path <- file.path(cache, "ferguson_611026_verified.gpkg")
+    if (!file.exists(path)) {
+      if (!download) stop("The corrected Ferguson boundary is not cached; download it or use --boundary-updates with the Box copy", call. = FALSE)
+      if (!requireNamespace("googledrive", quietly = TRUE)) {
+        stop("Install googledrive or use --boundary-updates with the Box copy", call. = FALSE)
+      }
+      dir.create(cache, recursive = TRUE, showWarnings = FALSE)
+      temporary <- tempfile("ferguson-", tmpdir = cache, fileext = ".gpkg")
+      on.exit(unlink(temporary), add = TRUE)
+      tryCatch(
+        googledrive::drive_download(
+          googledrive::as_id("1ICybKkvH3i-HI9LdBXZv9KO9ksFGO0fT"),
+          path = temporary, overwrite = FALSE
+        ),
+        error = function(error) stop("Could not download the corrected Ferguson boundary. Check shared Drive access or use --boundary-updates with the Box copy. ", conditionMessage(error), call. = FALSE)
+      )
+      check_file(temporary)
+      if (!file.rename(temporary, path)) stop("Could not save the Ferguson boundary in ", cache, call. = FALSE)
+    }
+  }
+  check_file(path)
+  boundary <- sf::st_read(path, quiet = TRUE)
+  assert_required_columns(boundary,
+    c("Shapefile_Name", "source_id", "source_type", "source_catchments", "official_area_km2"),
+    "corrected Ferguson boundary")
+  if (nrow(boundary) != 1L || boundary$source_id != "611026" ||
+      boundary$source_catchments != 25 || any(sf::st_is_empty(boundary)) ||
+      !all(sf::st_is_valid(boundary))) stop("Invalid corrected Ferguson boundary", call. = FALSE)
+  list(path = normalizePath(path), boundaries = boundary)
+}
+
 cli_value <- function(args, name, default = NULL, required = FALSE) {
   index <- which(args == name)
   if (!length(index)) {
