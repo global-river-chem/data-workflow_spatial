@@ -59,8 +59,9 @@ Engine computations.
 | Exclude accepted prior coverage | `build_incremental_targets.R` |
 | ERA5-Land | `era5_land/run_safe_era5_land_exports.py` |
 | Build local GLC sample points | `land_cover/build_local_glc_sample_points.R` |
+| Download checked daily ERA5 statistics | `era5_land/download_daily_era5_land_assets.R` |
 | Monthly or weekly ERA5 summaries | `era5_land/aggregate_daily_era5_land.R` |
-| Finish missing annual ERA5 assets | `era5_land/finish_missing_annual_assets.py` |
+| Finish missing ERA5 assets | `era5_land/finish_missing_era5_land_assets.py` |
 | GLC-FCS30D land cover | `land_cover/run_safe_glc_fcs30d_exports.py` |
 | GLC-FCS30D major land cover | `land_cover/run_safe_glc_major_land_exports.py` |
 | Download and check GLC results | `land_cover/consolidate_safe_glc_fcs30d_exports.R` |

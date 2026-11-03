@@ -21,7 +21,7 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -43,7 +43,7 @@ MAX_TASKS_PER_LAUNCH = 5
 DEFAULT_PROJECT = os.getenv("SILICA_GEE_PROJECT", "silica-synthesis")
 SOURCE_COLLECTION = "ECMWF/ERA5_LAND/DAILY_AGGR"
 NATIVE_SCALE_M = 11_100.0
-EXTRACTION_VERSION = "native_polygon_fine_scale_retry_v2"
+EXTRACTION_VERSION = "native_polygon_fine_scale_retry_v4"
 DEFAULT_PRODUCTS = (
     "precip",
     "temp",
@@ -52,6 +52,36 @@ DEFAULT_PRODUCTS = (
     "snow_cover",
     "snow_water_equiv",
 )
+DAILY_MODEL_PRODUCTS = (
+    "precip",
+    "temp",
+    "temp_min",
+    "temp_max",
+    "evapotrans",
+    "potential_evap",
+    "snow_cover",
+    "snow_water_equiv",
+    "runoff",
+    "solar_energy",
+    "soil_water_layer_1",
+    "soil_water_layer_3",
+    "vapor_pressure",
+)
+DAILY_STATISTIC_CHOICES = ("mean", "median", "min", "max", "sd")
+DAILY_STATISTIC_SUFFIXES = {
+    "mean": "spatial_mean",
+    "median": "spatial_median",
+    "min": "spatial_min",
+    "max": "spatial_max",
+    "sd": "spatial_sd",
+}
+DAILY_REDUCER_SUFFIXES = {
+    "mean": "mean",
+    "median": "median",
+    "min": "min",
+    "max": "max",
+    "sd": "stdDev",
+}
 METADATA_PROPERTIES = ("site_id", "LTER", "Stream_Name", "Shapefile_Name")
 ACTIVE_STATES = {
     "READY",
@@ -60,6 +90,7 @@ ACTIVE_STATES = {
     "CANCEL_REQUESTED",
     "CANCELLING",
 }
+ACCEPTED_SUBMISSION_STATES = {"READY", "RUNNING", "PENDING", "SUCCEEDED"}
 LABEL_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 ASSET_PART_PATTERN = re.compile(r"[^a-z0-9_-]+")
 TRANSIENT_ERROR_MARKERS = (
@@ -73,6 +104,9 @@ TRANSIENT_ERROR_MARKERS = (
     "timed out",
     "timeout",
 )
+SUBMISSION_RECONCILIATION_ATTEMPTS = 6
+SUBMISSION_RECONCILIATION_DELAY_SECONDS = 5
+SUBMISSION_CLOCK_SKEW_SECONDS = 60
 
 
 # ---- products and task records ----
@@ -88,6 +122,9 @@ class ProductSpec:
     monthly_reducer: str
     annual_reducer: str
     units: str
+    calculation: str = "linear"
+    minimum: float | None = None
+    maximum: float | None = None
 
 
 PRODUCTS = {
@@ -100,6 +137,7 @@ PRODUCTS = {
         "sum",
         "sum",
         "mm/day, mm/month, or mm/year",
+        minimum=0.0,
     ),
     "temp": ProductSpec(
         "temp",
@@ -109,6 +147,56 @@ PRODUCTS = {
         -273.15,
         "mean",
         "mean",
+        "degrees C",
+    ),
+    "temp_min": ProductSpec(
+        "temp_min",
+        "temperature_2m_min",
+        "temp_min_degC",
+        1.0,
+        -273.15,
+        "min",
+        "min",
+        "degrees C",
+    ),
+    "temp_max": ProductSpec(
+        "temp_max",
+        "temperature_2m_max",
+        "temp_max_degC",
+        1.0,
+        -273.15,
+        "max",
+        "max",
+        "degrees C",
+    ),
+    "skin_temp": ProductSpec(
+        "skin_temp",
+        "skin_temperature",
+        "skin_temp_degC",
+        1.0,
+        -273.15,
+        "mean",
+        "mean",
+        "degrees C",
+    ),
+    "skin_temp_min": ProductSpec(
+        "skin_temp_min",
+        "skin_temperature_min",
+        "skin_temp_min_degC",
+        1.0,
+        -273.15,
+        "min",
+        "min",
+        "degrees C",
+    ),
+    "skin_temp_max": ProductSpec(
+        "skin_temp_max",
+        "skin_temperature_max",
+        "skin_temp_max_degC",
+        1.0,
+        -273.15,
+        "max",
+        "max",
         "degrees C",
     ),
     "evapotrans": ProductSpec(
@@ -130,6 +218,8 @@ PRODUCTS = {
         "mean",
         "max",
         "fraction from 0 to 1",
+        minimum=0.0,
+        maximum=1.0,
     ),
     "snow_water_equiv": ProductSpec(
         "snow_water_equiv",
@@ -140,6 +230,7 @@ PRODUCTS = {
         "mean",
         "max",
         "mm",
+        minimum=0.0,
     ),
     "potential_evap": ProductSpec(
         "potential_evap",
@@ -150,6 +241,60 @@ PRODUCTS = {
         "sum",
         "sum",
         "positive mm/day, mm/month, or mm/year",
+    ),
+    "runoff": ProductSpec(
+        "runoff",
+        "runoff_sum",
+        "runoff_mm",
+        1_000.0,
+        0.0,
+        "sum",
+        "sum",
+        "mm/day, mm/month, or mm/year",
+        minimum=0.0,
+    ),
+    "solar_energy": ProductSpec(
+        "solar_energy",
+        "surface_solar_radiation_downwards_sum",
+        "solar_energy_mj_m2",
+        0.000001,
+        0.0,
+        "sum",
+        "sum",
+        "MJ/m2/day, MJ/m2/month, or MJ/m2/year",
+        minimum=0.0,
+    ),
+    "soil_water_layer_1": ProductSpec(
+        "soil_water_layer_1",
+        "volumetric_soil_water_layer_1",
+        "soil_water_layer_1_fraction",
+        1.0,
+        0.0,
+        "mean",
+        "mean",
+        "volume fraction",
+    ),
+    "soil_water_layer_3": ProductSpec(
+        "soil_water_layer_3",
+        "volumetric_soil_water_layer_3",
+        "soil_water_layer_3_fraction",
+        1.0,
+        0.0,
+        "mean",
+        "mean",
+        "volume fraction",
+    ),
+    "vapor_pressure": ProductSpec(
+        "vapor_pressure",
+        "dewpoint_temperature_2m",
+        "vapor_pressure_pa",
+        1.0,
+        -273.15,
+        "mean",
+        "mean",
+        "Pa",
+        calculation="vapor_pressure",
+        minimum=0.0,
     ),
 }
 
@@ -173,6 +318,7 @@ class TaskPlan:
     days: int
     period: str
     products: tuple[str, ...]
+    spatial_statistics: tuple[str, ...]
     effective_pixel_band_days: float
 
 
@@ -213,6 +359,23 @@ def parse_products(value: str) -> tuple[str, ...]:
         )
     if len(set(requested)) != len(requested):
         raise ValueError("Each product may be listed only once.")
+    return requested
+
+
+def parse_spatial_statistics(value: str) -> tuple[str, ...]:
+    requested = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not requested:
+        raise ValueError("At least one daily spatial statistic is required.")
+    unknown = sorted(set(requested) - set(DAILY_STATISTIC_CHOICES))
+    if unknown:
+        raise ValueError(
+            "Unknown daily spatial statistics: " + ", ".join(unknown)
+            + ". Available: " + ", ".join(DAILY_STATISTIC_CHOICES)
+        )
+    if len(set(requested)) != len(requested):
+        raise ValueError("Each daily spatial statistic may be listed only once.")
+    if "mean" not in requested:
+        raise ValueError("Daily spatial statistics must include mean.")
     return requested
 
 
@@ -264,8 +427,9 @@ def load_payload_manifest(path: Path) -> list[Payload]:
     manifest_path = path.resolve()
     if not manifest_path.is_file():
         raise ValueError(f"Payload manifest does not exist: {manifest_path}")
+    delimiter = "\t" if manifest_path.suffix.lower() == ".tsv" else ","
     with manifest_path.open(newline="", encoding="utf-8-sig") as handle:
-        rows = list(csv.DictReader(handle))
+        rows = list(csv.DictReader(handle, delimiter=delimiter))
     required = {"payload", "path", "sites", "polygon_area_km2_sum"}
     if not rows or not required.issubset(rows[0]):
         raise ValueError(
@@ -436,6 +600,17 @@ def safe_asset_part(value: str) -> str:
 # ---- task planning ----
 
 
+def task_prefix(
+    period: str,
+    products: tuple[str, ...],
+    spatial_statistics: tuple[str, ...] = (),
+) -> str:
+    short_period = {"annual": "a", "daily": "d", "monthly": "m"}[period]
+    if period == "daily" and spatial_statistics:
+        return f"era5{short_period}{len(products)}s{len(spatial_statistics)}_"
+    return f"era5{short_period}{len(products)}_"
+
+
 def plan_tasks(
     *,
     payloads: Iterable[Payload],
@@ -445,11 +620,13 @@ def plan_tasks(
     products: tuple[str, ...],
     run_label: str,
     output_folder: str,
+    spatial_statistics: tuple[str, ...] = (),
 ) -> list[TaskPlan]:
     if period not in {"annual", "daily", "monthly"}:
         raise ValueError("Period must be annual, daily, or monthly.")
-    short_period = {"annual": "a", "daily": "d", "monthly": "m"}[period]
-    prefix = f"era5{short_period}{len(products)}_"
+    if spatial_statistics and period != "daily":
+        raise ValueError("Spatial statistics are supported only for daily exports.")
+    prefix = task_prefix(period, products, spatial_statistics)
     plans: list[TaskPlan] = []
     for payload in payloads:
         payload_name = safe_asset_part(payload.name)
@@ -484,6 +661,7 @@ def plan_tasks(
                         days=days,
                         period=period,
                         products=products,
+                        spatial_statistics=spatial_statistics,
                         effective_pixel_band_days=estimated_work,
                     )
                 )
@@ -512,13 +690,14 @@ def workload_fingerprint(plans: Iterable[TaskPlan]) -> str:
             "days": plan.days,
             "period": plan.period,
             "products": list(plan.products),
+            "spatial_statistics": list(plan.spatial_statistics),
             "scale_m": NATIVE_SCALE_M,
             "extraction_version": EXTRACTION_VERSION,
         }
         for plan in plans
     ]
-    canonical = json.dumps(exact, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    exact_json = json.dumps(exact, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(exact_json.encode("utf-8")).hexdigest()
 
 
 def attach_verified_payload(plan: TaskPlan, payload: Payload) -> TaskPlan:
@@ -571,19 +750,120 @@ def child_asset_ids(parent: str) -> set[str]:
         request["pageToken"] = token
 
 
+def operation_task_id(operation: dict[str, Any]) -> str | None:
+    name = str(operation.get("name", "")).strip()
+    if "/operations/" not in name:
+        return None
+    task_id = name.rsplit("/", 1)[-1]
+    return task_id or None
+
+
+def operation_creation_time(operation: dict[str, Any]) -> float | None:
+    value = str(operation.get("metadata", {}).get("createTime", "")).strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except (ValueError, OSError):
+        return None
+
+
+def operation_matches_plan(operation: dict[str, Any], plan: TaskPlan) -> bool:
+    metadata = operation.get("metadata", {})
+    if str(metadata.get("description", "")) != plan.description:
+        return False
+    destinations = metadata.get("destinationUris", []) or []
+    return any(
+        str(destination) == plan.asset_id
+        or str(destination).endswith(f"asset={plan.asset_id}")
+        for destination in destinations
+    )
+
+
+def remote_task_id_for_plan(
+    plan: TaskPlan,
+    operations: Iterable[dict[str, Any]],
+    *,
+    started_after: float,
+) -> str | None:
+    earliest = started_after - SUBMISSION_CLOCK_SKEW_SECONDS
+    candidates = []
+    for operation in operations:
+        if not operation_matches_plan(operation, plan):
+            continue
+        state = str(operation.get("metadata", {}).get("state", "")).upper()
+        if state not in ACCEPTED_SUBMISSION_STATES:
+            continue
+        created_at = operation_creation_time(operation)
+        if created_at is None or created_at < earliest:
+            continue
+        task_id = operation_task_id(operation)
+        if task_id is not None:
+            candidates.append(task_id)
+    if not candidates:
+        return None
+    if len(candidates) != 1:
+        raise RuntimeError(
+            f"Found multiple newly accepted operations for {plan.description}."
+        )
+    return candidates[0]
+
+
+def start_export_task(plan: TaskPlan, task: Any) -> str:
+    started_at = time.time()
+    try:
+        task.start()
+    except Exception:
+        # check whether earth engine accepted the request before reporting failure
+        for attempt in range(SUBMISSION_RECONCILIATION_ATTEMPTS):
+            try:
+                task_id = remote_task_id_for_plan(
+                    plan,
+                    operation_list(),
+                    started_after=started_at,
+                )
+            except Exception:
+                task_id = None
+            if task_id is not None:
+                return task_id
+            if attempt + 1 < SUBMISSION_RECONCILIATION_ATTEMPTS:
+                time.sleep(SUBMISSION_RECONCILIATION_DELAY_SECONDS)
+        raise
+    if not task.id:
+        raise RuntimeError(
+            f"Earth Engine started {plan.description} without returning a task ID."
+        )
+    return str(task.id)
+
+
+def transform_product(image: Any, spec: ProductSpec) -> Any:
+    value = image.select(spec.source_band).multiply(spec.daily_scale).add(
+        spec.daily_offset
+    )
+    # convert dew point in degrees celsius to vapor pressure in pascals
+    if spec.calculation == "vapor_pressure":
+        value = (
+            value.multiply(17.67)
+            .divide(value.add(243.5))
+            .exp()
+            .multiply(611.2)
+        )
+    elif spec.calculation != "linear":
+        raise ValueError(f"Unsupported ERA5-Land calculation: {spec.calculation}")
+    if spec.minimum is not None:
+        value = value.max(spec.minimum)
+    if spec.maximum is not None:
+        value = value.min(spec.maximum)
+    return value.rename(spec.output_property)
+
+
 def transformed_daily_collection(
     specs: tuple[ProductSpec, ...], start: Any, end: Any
 ) -> Any:
     source = ee.ImageCollection(SOURCE_COLLECTION).filterDate(start, end)
 
     def transform(image: Any) -> Any:
-        bands = [
-            image.select(spec.source_band)
-            .multiply(spec.daily_scale)
-            .add(spec.daily_offset)
-            .rename(spec.output_property)
-            for spec in specs
-        ]
+        bands = [transform_product(image, spec) for spec in specs]
         return ee.Image.cat(bands).copyProperties(image, ["system:time_start"])
 
     return source.map(transform)
@@ -655,9 +935,129 @@ def reduce_image_for_feature(
     ).set(values)
 
 
+def daily_statistic_properties(
+    specs: tuple[ProductSpec, ...],
+    statistics: tuple[str, ...],
+) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (
+            f"{spec.output_property}_{DAILY_REDUCER_SUFFIXES[statistic]}",
+            f"{spec.output_property}_{DAILY_STATISTIC_SUFFIXES[statistic]}",
+        )
+        for spec in specs
+        for statistic in statistics
+    )
+
+
+def daily_spatial_reducer(statistics: tuple[str, ...]) -> Any:
+    factories = {
+        "mean": ee.Reducer.mean,
+        "median": ee.Reducer.median,
+        "min": ee.Reducer.min,
+        "max": ee.Reducer.max,
+        "sd": ee.Reducer.stdDev,
+    }
+    reducer = factories[statistics[0]]()
+    for statistic in statistics[1:]:
+        reducer = reducer.combine(
+            reducer2=factories[statistic](),
+            sharedInputs=True,
+        )
+    return reducer.combine(reducer2=ee.Reducer.count(), sharedInputs=True)
+
+
+def reduce_daily_image_for_feature(
+    image: Any,
+    feature: Any,
+    specs: tuple[ProductSpec, ...],
+    statistics: tuple[str, ...],
+) -> Any:
+    projection = image.select(0).projection()
+    geometry = feature.geometry()
+    centroid = geometry.centroid(maxError=1)
+    reducer = daily_spatial_reducer(statistics)
+    native_values = image.reduceRegion(
+        reducer=reducer,
+        geometry=geometry,
+        scale=NATIVE_SCALE_M,
+        crs=projection,
+        bestEffort=False,
+        maxPixels=1_000_000,
+        tileScale=2,
+    )
+    fine_scale_m = NATIVE_SCALE_M / 10
+    fine_values = image.reduceRegion(
+        reducer=reducer,
+        geometry=geometry,
+        scale=fine_scale_m,
+        crs=projection,
+        bestEffort=False,
+        maxPixels=100_000_000,
+        tileScale=4,
+    )
+    # use one scale for all products if any band has no usable native pixels
+    missing_native = []
+    native_counts = []
+    for spec in specs:
+        mean_name = f"{spec.output_property}_mean"
+        count_name = f"{spec.output_property}_count"
+        native_count = ee.Algorithms.If(
+            ee.Algorithms.IsEqual(native_values.get(count_name), None),
+            0,
+            native_values.get(count_name),
+        )
+        native_counts.append(native_count)
+        missing_native.append(
+            ee.Algorithms.If(
+                ee.Algorithms.IsEqual(native_values.get(mean_name), None),
+                True,
+                ee.Number(native_count).lte(0),
+            )
+        )
+    use_fine_scale = ee.List(missing_native).contains(True)
+    values = {
+        final_name: ee.Algorithms.If(
+            use_fine_scale,
+            fine_values.get(raw_name),
+            native_values.get(raw_name),
+        )
+        for raw_name, final_name in daily_statistic_properties(specs, statistics)
+    }
+    values["native_pixel_count"] = ee.List(native_counts).reduce(
+        ee.Reducer.min()
+    )
+    values["reduction_scale_m"] = ee.Algorithms.If(
+        use_fine_scale,
+        fine_scale_m,
+        NATIVE_SCALE_M,
+    )
+    values["used_fine_scale_fallback"] = ee.Algorithms.If(
+        use_fine_scale,
+        1,
+        0,
+    )
+    watershed_area = first_property(
+        feature,
+        ("polygon_area_km2", "expected_area_km2"),
+    )
+    values["watershed_area_km2"] = ee.Algorithms.If(
+        ee.Algorithms.IsEqual(watershed_area, None),
+        geometry.area(maxError=1).divide(1_000_000),
+        watershed_area,
+    )
+    return ee.Feature(
+        centroid,
+        feature.toDictionary(),
+    ).set(values)
+
+
 def build_daily_export(plan: TaskPlan, watersheds: Any) -> tuple[Any, list[str]]:
     specs = tuple(PRODUCTS[key] for key in plan.products)
     outputs = tuple(spec.output_property for spec in specs)
+    statistic_properties = daily_statistic_properties(
+        specs,
+        plan.spatial_statistics,
+    )
     start = ee.Date.fromYMD(plan.year, plan.month, 1)
     end = start.advance(1, "month")
     daily = transformed_daily_collection(specs, start, end)
@@ -670,7 +1070,15 @@ def build_daily_export(plan: TaskPlan, watersheds: Any) -> tuple[Any, list[str]]
         )
 
         def summarize_feature(feature: Any) -> Any:
-            reduced = reduce_image_for_feature(image, feature, outputs)
+            if plan.spatial_statistics:
+                reduced = reduce_daily_image_for_feature(
+                    image,
+                    feature,
+                    specs,
+                    plan.spatial_statistics,
+                )
+            else:
+                reduced = reduce_image_for_feature(image, feature, outputs)
             return reduced.set(
                 {
                     "date": day_start.format("YYYY-MM-dd"),
@@ -685,6 +1093,22 @@ def build_daily_export(plan: TaskPlan, watersheds: Any) -> tuple[Any, list[str]]
         return watersheds.map(summarize_feature)
 
     table = ee.FeatureCollection(offsets.map(summarize_day)).flatten()
+    if plan.spatial_statistics:
+        selectors = [
+            *METADATA_PROPERTIES,
+            "watershed_area_km2",
+            "date",
+            "year",
+            "month",
+            "day",
+            "day_of_year",
+            *(final_name for _, final_name in statistic_properties),
+            "native_pixel_count",
+            "reduction_scale_m",
+            "used_fine_scale_fallback",
+            "source_image_count",
+        ]
+        return table.select(selectors), selectors
     selectors = [
         *METADATA_PROPERTIES,
         "date",
@@ -705,12 +1129,7 @@ def build_monthly_export(plan: TaskPlan, watersheds: Any) -> tuple[Any, list[str
     start = ee.Date.fromYMD(plan.year, plan.month, 1)
     end = start.advance(1, "month")
     daily = transformed_daily_collection(specs, start, end)
-    aggregated = []
-    for spec in specs:
-        selected = daily.select(spec.output_property)
-        image = selected.sum() if spec.monthly_reducer == "sum" else selected.mean()
-        aggregated.append(image.rename(spec.output_property))
-    monthly_image = ee.Image.cat(aggregated)
+    monthly_image = aggregate_images(daily, specs, "monthly_reducer")
 
     def summarize_feature(feature: Any) -> Any:
         reduced = reduce_image_for_feature(monthly_image, feature, outputs)
@@ -768,6 +1187,8 @@ def aggregate_images(
             image = selected.sum()
         elif reducer == "mean":
             image = selected.mean()
+        elif reducer == "min":
+            image = selected.min()
         elif reducer == "max":
             image = selected.max()
         else:
@@ -973,6 +1394,7 @@ def write_task_log(path: Path, plans: list[TaskPlan], task_ids: list[str]) -> No
             "month": plan.month,
             "period": plan.period,
             "products": list(plan.products),
+            "spatial_statistics": list(plan.spatial_statistics),
             "effective_pixel_band_days": round(plan.effective_pixel_band_days),
         }
         for plan, task_id in zip(plans, task_ids, strict=True)
@@ -996,7 +1418,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--years", default="2000:2025")
     parser.add_argument("--months", default="1:12")
-    parser.add_argument("--products", default=",".join(DEFAULT_PRODUCTS))
+    parser.add_argument(
+        "--products",
+        help=(
+            "Comma-separated product keys. Daily exports default to the 13 "
+            "model predictors; annual and monthly exports keep the six "
+            "established products."
+        ),
+    )
+    parser.add_argument(
+        "--spatial-statistics",
+        help=(
+            "Comma-separated within-watershed statistics for daily exports. "
+            "Supported values are mean, median, min, max, and sd. Omit this "
+            "option to retain the established mean-only daily output."
+        ),
+    )
     parser.add_argument("--expected-site-count", type=int)
     parser.add_argument(
         "--expected-site-ids",
@@ -1027,9 +1464,21 @@ def parse_args() -> argparse.Namespace:
     try:
         args.years = parse_integer_selection(args.years, 1950, 2100)
         args.months = parse_integer_selection(args.months, 1, 12)
-        args.products = parse_products(args.products)
+        default_products = (
+            DAILY_MODEL_PRODUCTS if args.period == "daily" else DEFAULT_PRODUCTS
+        )
+        args.products = parse_products(
+            args.products or ",".join(default_products)
+        )
+        args.spatial_statistics = (
+            parse_spatial_statistics(args.spatial_statistics)
+            if args.spatial_statistics
+            else ()
+        )
     except ValueError as exc:
         parser.error(str(exc))
+    if args.spatial_statistics and args.period != "daily":
+        parser.error("--spatial-statistics is supported only with --period daily.")
     if args.max_new_tasks < 1 or args.max_new_tasks > MAX_TASKS_PER_LAUNCH:
         parser.error(
             f"--max-new-tasks must be between 1 and {MAX_TASKS_PER_LAUNCH}."
@@ -1081,6 +1530,7 @@ def main() -> int:
         products=args.products,
         run_label=args.run_label,
         output_folder=args.output_folder,
+        spatial_statistics=args.spatial_statistics,
     )
     existing_assets = child_asset_ids(args.output_folder.rstrip("/"))
     active = active_descriptions()
@@ -1123,8 +1573,13 @@ def main() -> int:
         )
 
     workflow = f"era5_land_{args.period}"
-    period_code = {"annual": "a", "daily": "d", "monthly": "m"}[args.period]
-    description_prefix = f"era5{period_code}{len(args.products)}_"
+    if args.spatial_statistics:
+        workflow += "_spatial_stats"
+    description_prefix = task_prefix(
+        args.period,
+        args.products,
+        args.spatial_statistics,
+    )
     print("Required preflight command:")
     print(
         "  "
@@ -1165,9 +1620,9 @@ def main() -> int:
         tasks.append(make_export_task(plan))
     task_ids: list[str] = []
     for index, task in enumerate(tasks, start=1):
-        task.start()
-        task_ids.append(str(task.id))
-        print(f"Started {task.id}", flush=True)
+        task_id = start_export_task(launch_plan[index - 1], task)
+        task_ids.append(task_id)
+        print(f"Started {task_id}", flush=True)
         if args.task_log is not None:
             write_task_log(args.task_log, launch_plan[:index], task_ids)
     if args.task_log is not None and task_ids:

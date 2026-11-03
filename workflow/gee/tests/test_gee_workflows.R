@@ -434,6 +434,155 @@ python_status <- system2(
 )
 stopifnot(is.null(attr(python_status, "status")))
 
+# ---- era5 daily products ----
+
+era5_python_check <- paste(c(
+  "import importlib.util",
+  "import math",
+  "import sys",
+  "import time",
+  "import types",
+  "from pathlib import Path",
+  "path = Path('workflow/gee/era5_land/run_safe_era5_land_exports.py')",
+  "spec = importlib.util.spec_from_file_location('era5_daily', path)",
+  "era5 = importlib.util.module_from_spec(spec)",
+  "sys.modules[spec.name] = era5",
+  "spec.loader.exec_module(era5)",
+  paste0(
+    "expected_products = ('precip', 'temp', 'temp_min', 'temp_max', ",
+    "'evapotrans', 'potential_evap', 'snow_cover', ",
+    "'snow_water_equiv', 'runoff', 'solar_energy', ",
+    "'soil_water_layer_1', 'soil_water_layer_3', 'vapor_pressure')"
+  ),
+  "assert era5.DAILY_MODEL_PRODUCTS == expected_products",
+  "statistics = ('mean', 'median', 'min', 'max', 'sd')",
+  paste0(
+    "assert era5.parse_spatial_statistics(",
+    "'mean, median, min, max, sd') == statistics"
+  ),
+  "assert era5.EXTRACTION_VERSION == 'native_polygon_fine_scale_retry_v4'",
+  paste0(
+    "assert era5.task_prefix('daily', expected_products, statistics) == ",
+    "'era5d13s5_'"
+  ),
+  "product_specs = tuple(era5.PRODUCTS[key] for key in expected_products)",
+  "property_pairs = era5.daily_statistic_properties(product_specs, statistics)",
+  "output_properties = tuple(output for source, output in property_pairs)",
+  "assert len(output_properties) == 65",
+  "assert len(set(output_properties)) == 65",
+  "assert output_properties[0] == 'precip_mm_spatial_mean'",
+  "assert output_properties[4] == 'precip_mm_spatial_sd'",
+  "assert 'temp_min_degC_spatial_min' in output_properties",
+  "assert 'temp_max_degC_spatial_max' in output_properties",
+  "assert output_properties[-1] == 'vapor_pressure_pa_spatial_sd'",
+  paste0(
+    "expected_bands = ('total_precipitation_sum', 'temperature_2m', ",
+    "'temperature_2m_min', 'temperature_2m_max', ",
+    "'total_evaporation_sum', 'potential_evaporation_sum', 'snow_cover', ",
+    "'snow_depth_water_equivalent', 'runoff_sum', ",
+    "'surface_solar_radiation_downwards_sum', ",
+    "'volumetric_soil_water_layer_1', 'volumetric_soil_water_layer_3', ",
+    "'dewpoint_temperature_2m')"
+  ),
+  paste0(
+    "assert tuple(era5.PRODUCTS[key].source_band for key in expected_products) ",
+    "== expected_bands"
+  ),
+  "assert era5.PRODUCTS['snow_cover'].daily_scale == 0.01",
+  "assert era5.PRODUCTS['snow_cover'].minimum == 0.0",
+  "assert era5.PRODUCTS['snow_cover'].maximum == 1.0",
+  "assert era5.PRODUCTS['temp_min'].monthly_reducer == 'min'",
+  "assert era5.PRODUCTS['temp_max'].monthly_reducer == 'max'",
+  "assert era5.PRODUCTS['skin_temp'].source_band == 'skin_temperature'",
+  "assert era5.PRODUCTS['skin_temp'].output_property == 'skin_temp_degC'",
+  "assert era5.PRODUCTS['skin_temp_min'].source_band == 'skin_temperature_min'",
+  "assert era5.PRODUCTS['skin_temp_min'].monthly_reducer == 'min'",
+  "assert era5.PRODUCTS['skin_temp_max'].source_band == 'skin_temperature_max'",
+  "assert era5.PRODUCTS['skin_temp_max'].monthly_reducer == 'max'",
+  "assert not set(('skin_temp', 'skin_temp_min', 'skin_temp_max')) & set(expected_products)",
+  "assert era5.PRODUCTS['vapor_pressure'].calculation == 'vapor_pressure'",
+  "vapor_at_zero = 611.2 * math.exp(17.67 * 0 / (0 + 243.5))",
+  "vapor_at_twenty = 611.2 * math.exp(17.67 * 20 / (20 + 243.5))",
+  "assert math.isclose(vapor_at_zero, 611.2, rel_tol=1e-12)",
+  "assert math.isclose(vapor_at_twenty, 2336.947123406443, rel_tol=1e-12)",
+  "submission_plan = types.SimpleNamespace(",
+  "    description='daily_test', asset_id='projects/test/assets/output'",
+  ")",
+  "accepted_operation = {",
+  "    'name': 'projects/test/operations/TASK123',",
+  "    'metadata': {",
+  "        'description': submission_plan.description,",
+  "        'state': 'SUCCEEDED',",
+  paste0(
+    "        'destinationUris': [",
+    "'https://code.earthengine.google.com/?asset=' + submission_plan.asset_id],"
+  ),
+  "        'createTime': '2999-01-01T00:00:00Z',",
+  "    },",
+  "}",
+  paste0(
+    "assert era5.remote_task_id_for_plan(submission_plan, ",
+    "[accepted_operation], started_after=time.time()) == 'TASK123'"
+  ),
+  "wrong_output = dict(accepted_operation)",
+  "wrong_output['metadata'] = dict(accepted_operation['metadata'])",
+  "wrong_output['metadata']['destinationUris'] = ['wrong']",
+  paste0(
+    "assert era5.remote_task_id_for_plan(submission_plan, ",
+    "[wrong_output], started_after=time.time()) is None"
+  ),
+  "failed_operation = dict(accepted_operation)",
+  "failed_operation['metadata'] = dict(accepted_operation['metadata'])",
+  "failed_operation['metadata']['state'] = 'FAILED'",
+  paste0(
+    "assert era5.remote_task_id_for_plan(submission_plan, ",
+    "[failed_operation], started_after=time.time()) is None"
+  ),
+  "second_operation = dict(accepted_operation)",
+  "second_operation['name'] = 'projects/test/operations/TASK124'",
+  "try:",
+  paste0(
+    "    era5.remote_task_id_for_plan(submission_plan, ",
+    "[accepted_operation, second_operation], started_after=time.time())"
+  ),
+  "except RuntimeError:",
+  "    pass",
+  "else:",
+  "    raise AssertionError('ambiguous accepted operations were reconciled')",
+  "class AcceptedWithError:",
+  "    id = None",
+  "    def start(self):",
+  "        raise RuntimeError('response was lost')",
+  "era5.operation_list = lambda: [accepted_operation]",
+  paste0(
+    "assert era5.start_export_task(submission_plan, AcceptedWithError()) == ",
+    "'TASK123'"
+  ),
+  "class DirectStart:",
+  "    id = 'TASK456'",
+  "    def start(self):",
+  "        return None",
+  paste0(
+    "assert era5.start_export_task(submission_plan, DirectStart()) == ",
+    "'TASK456'"
+  )
+), collapse = "\n")
+era5_status <- system2(
+  "python3",
+  c("-c", shQuote(era5_python_check)),
+  stdout = TRUE,
+  stderr = TRUE
+)
+stopifnot(is.null(attr(era5_status, "status")))
+
+era5_download_test <- system2(
+  "Rscript",
+  c("workflow/gee/era5_land/download_daily_era5_land_assets.R", "--self-test"),
+  stdout = TRUE,
+  stderr = TRUE
+)
+stopifnot(is.null(attr(era5_download_test, "status")))
+
 # ---- modis export geometry ----
 
 modis_python_test <- system2(
@@ -456,6 +605,7 @@ stopifnot(is.null(attr(modis_r_test, "status")))
 finisher_python_check <- paste(c(
   "import importlib.util",
   "import sys",
+  "import tempfile",
   "import types",
   "from pathlib import Path",
   "sys.modules['ee'] = types.ModuleType('ee')",
@@ -465,7 +615,7 @@ finisher_python_check <- paste(c(
   "    spec.loader.exec_module(module)",
   "    return module",
   "modules = [",
-  "    load_module('era5_finisher', Path('workflow/gee/era5_land/finish_missing_annual_assets.py')),",
+  "    load_module('era5_finisher', Path('workflow/gee/era5_land/finish_missing_era5_land_assets.py')),",
   "    load_module('modis_finisher', Path('workflow/gee/modis/finish_missing_modis_assets.py')),",
   "]",
   "valid = [{'id': 'A', 'state': 'RUNNING'}, {'id': 'B', 'state': 'COMPLETED'}]",
@@ -484,13 +634,102 @@ finisher_python_check <- paste(c(
   "            pass",
   "        else:",
   "            raise AssertionError('invalid task status was accepted')",
+  "era5_module = modules[0]",
+  "era5_module.ee.data = types.SimpleNamespace(",
+  "    getTaskStatus=lambda task_ids: [{'id': 'A', 'state': 'COMPLETED'}]",
+  ")",
+  "assert era5_module.wait_for_tasks(['A'], 5) == {}",
+  "era5_module.ee.data = types.SimpleNamespace(",
+  "    getTaskStatus=lambda task_ids: [{'id': 'A', 'state': 'FAILED'}]",
+  ")",
+  "assert era5_module.wait_for_tasks(['A'], 5) == {'A': 'FAILED'}",
+  "status_rows = iter([",
+  "    [{'id': 'A', 'state': 'CANCEL_REQUESTED'}],",
+  "    [{'id': 'A', 'state': 'CANCELLED'}],",
+  "])",
+  "era5_module.ee.data = types.SimpleNamespace(",
+  "    getTaskStatus=lambda task_ids: next(status_rows)",
+  ")",
+  "era5_module.time.sleep = lambda seconds: None",
+  "assert era5_module.wait_for_tasks(['A'], 5) == {'A': 'CANCELLED'}",
+  "# ---- status recovery checks ----",
+  "",
+  "class StatusError(RuntimeError):",
+  "    def __init__(self, status, message):",
+  "        super().__init__(message)",
+  "        self.resp = types.SimpleNamespace(status=status)",
+  "",
+  "",
+  "def check_recovery(responses, expected_calls, expected_refreshes, error_type=None):",
+  "    calls = []",
+  "    refreshes = []",
+  "    delays = []",
+  "    responses = iter(responses)",
+  "",
+  "    def status(task_ids):",
+  "        calls.append(task_ids)",
+  "        result = next(responses)",
+  "        if isinstance(result, Exception):",
+  "            raise result",
+  "        return result",
+  "",
+  "    era5_module.ee.data = types.SimpleNamespace(getTaskStatus=status)",
+  "    era5_module.ee.Reset = lambda: refreshes.append('reset')",
+  "    era5_module.ee.Initialize = lambda project: refreshes.append(project)",
+  "    era5_module.time.sleep = delays.append",
+  "    try:",
+  "        result = era5_module.task_status_with_retries(['A'], 'test-project')",
+  "    except Exception as error:",
+  "        assert error_type is not None and isinstance(error, error_type)",
+  "    else:",
+  "        assert error_type is None and result == [{'id': 'A', 'state': 'COMPLETED'}]",
+  "    assert len(calls) == expected_calls",
+  "    assert refreshes == ['reset', 'test-project'] * expected_refreshes",
+  "    assert len(delays) == expected_calls - 1",
+  "",
+  "",
+  "complete = [{'id': 'A', 'state': 'COMPLETED'}]",
+  "check_recovery([TimeoutError('timed out'), complete], 2, 0)",
+  "check_recovery([StatusError(503, 'unavailable'), complete], 2, 0)",
+  "check_recovery([StatusError(429, 'busy'), complete], 2, 0)",
+  "access = 'Not signed up for Earth Engine or project is not registered'",
+  "check_recovery([StatusError(403, access), complete], 2, 1)",
+  "check_recovery([StatusError(403, access)] * 3, 3, 2, RuntimeError)",
+  "check_recovery([StatusError(403, 'Permission denied')], 1, 0, StatusError)",
+  "check_recovery([StatusError(400, 'Invalid request')], 1, 0, StatusError)",
+  "check_recovery([StatusError(503, 'unavailable')] * 6, 6, 0, RuntimeError)",
+  "check_recovery([RuntimeError('unexpected failure')], 1, 0, RuntimeError)",
+  "era5_module.ee.data = types.SimpleNamespace(getTaskStatus=lambda ids: [])",
+  "try:",
+  "    era5_module.wait_for_tasks(['A'], 5)",
+  "except RuntimeError:",
+  "    pass",
+  "else:",
+  "    raise AssertionError('malformed status was accepted after recovery')",
+  "with tempfile.TemporaryDirectory() as temp_root:",
+  "    root = Path(temp_root)",
+  "    first = era5_module.prepare_receipt_dir(root)",
+  "    second = era5_module.prepare_receipt_dir(root)",
+  "    assert first != second and first.parent == root and second.parent == root",
+  "    receipt = first / 'receipt.json'",
+  "    assert not era5_module.watchdog_requested_cancellation(receipt)",
+  "    Path(str(receipt) + '.watchdog.jsonl').write_text(",
+  "        '{\"event\":\"cancellation_requested\"}\\n', encoding='utf-8'",
+  "    )",
+  "    assert era5_module.watchdog_requested_cancellation(receipt)",
   "era5_args = types.SimpleNamespace(",
   "    payload_manifest=Path('payloads.csv'), output_folder='assets/test',",
   "    run_label='test', project='different-project', years='2000:2025',",
+  "    period='daily', months='1:12', products='precip,temp',",
+  "    spatial_statistics='mean,median,min,max,sd',",
   "    expected_site_count=1, expected_site_ids=Path('sites.csv'), batch_size=1,",
   ")",
   "era5_command = modules[0].build_launcher_command(era5_args, Path('launcher.py'))",
-  "assert era5_command[era5_command.index('--project') + 1] == 'different-project'"
+  "assert era5_command[era5_command.index('--project') + 1] == 'different-project'",
+  paste0(
+    "assert era5_command[era5_command.index('--spatial-statistics') + 1] == ",
+    "'mean,median,min,max,sd'"
+  )
 ), collapse = "\n")
 finisher_status <- system2(
   "python3",
@@ -516,7 +755,7 @@ gee_python <- list.files(
   full.names = TRUE
 )
 expected_gee_python <- c(
-  "workflow/gee/era5_land/finish_missing_annual_assets.py",
+  "workflow/gee/era5_land/finish_missing_era5_land_assets.py",
   "workflow/gee/era5_land/run_safe_era5_land_exports.py",
   "workflow/gee/human_impacts/run_missing_site_exports.py",
   "workflow/gee/land_cover/run_safe_glc_fcs30d_exports.py",
