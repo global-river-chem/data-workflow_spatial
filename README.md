@@ -69,6 +69,25 @@ Product and asset settings are under `config/`; generated exports and
 temporary files do not belong in this checkout. Write them directly to the
 shared spatial-data extraction folder or another explicit external path.
 
+## CAMREX watershed recovery
+
+Six CAMREX mainstem sites have reviewed GLORICH catchments derived from
+HydroSHEDS 15-arc-second data. Recover them from the local GLORICH source
+archive with the tracked site identifiers and area checks:
+
+```bash
+Rscript workflow/watershed_delineation/recover_glorich_watersheds.R \
+  --source-archive /path/to/Glorich_V01_CSV_plus_Shapefiles_2019_05_24.zip \
+  --targets workflow/watershed_delineation/config/glorich_camrex_targets.tsv \
+  --output-root /path/to/reviewed-camrex-watersheds
+```
+
+The recovery stops if a polygon is invalid, differs from its published area
+by more than one percent, lies more than two kilometers from its CAMREX point,
+or breaks the expected downstream nesting order. It writes each shape under
+the `data_release_3` folder expected by the watershed builder and records the
+site-reference fields and checks in `glorich_recovery_qa.tsv`.
+
 ## Reviewed StreamStats recovery
 
 The StreamStats recovery accepts watersheds only for the eight sites in the
