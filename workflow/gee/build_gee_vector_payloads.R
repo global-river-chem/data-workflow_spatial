@@ -1,5 +1,4 @@
-
-# Build size-balanced GeoJSON watershed batches for Earth Engine workflows.
+# build watershed file groups for earth engine
 #
 # the source watershed layer is never modified. simplification occurs in an
 # equal-area crs and is rejected if any polygon exceeds the requested area
@@ -30,11 +29,7 @@ output_root <- cli_value(args, "--output-root", required = TRUE)
 payload_prefix <- cli_value(args, "--payload-prefix", "payload")
 property_prefix <- cli_value(args, "--property-prefix", "gee")
 profile <- cli_value(args, "--simplification-profile", "none")
-expected_site_count <- cli_integer(
-  args,
-  "--expected-site-count",
-  NA_integer_
-)
+expected_site_count <- cli_integer(args, "--expected-site-count", minimum = 1L)
 target_payload_mb <- as.numeric(cli_value(args, "--target-payload-mb", "5"))
 maximum_payload_mb <- as.numeric(cli_value(args, "--maximum-payload-mb", "7.5"))
 maximum_area_error_pct <- as.numeric(
@@ -54,6 +49,7 @@ time_slices_per_task <- cli_integer(
   minimum = 1L
 )
 bands_per_slice <- cli_integer(args, "--bands-per-slice", 1L, minimum = 1L)
+table_format <- tolower(cli_value(args, "--table-format", "csv"))
 maximum_effective_pixels <- as.numeric(
   cli_value(args, "--maximum-effective-pixels-per-task", "100000000")
 )
@@ -68,6 +64,9 @@ if (any(!is.finite(numeric_options)) || any(numeric_options <= 0)) {
 }
 if (target_payload_mb > maximum_payload_mb) {
   stop("--target-payload-mb cannot exceed --maximum-payload-mb.", call. = FALSE)
+}
+if (!table_format %in% c("csv", "tsv")) {
+  stop("--table-format must be csv or tsv.", call. = FALSE)
 }
 if (
   (!is.na(analysis_scale_m) && (!is.finite(analysis_scale_m) || analysis_scale_m <= 0)) ||
@@ -123,7 +122,7 @@ if (
     call. = FALSE
   )
 }
-if (!is.na(expected_site_count) && nrow(watersheds) != expected_site_count) {
+if (!is.null(expected_site_count) && nrow(watersheds) != expected_site_count) {
   stop(
     "Watershed layer has ", nrow(watersheds),
     " sites; expected ", expected_site_count, ".",
@@ -168,6 +167,8 @@ if (max(area_error_pct, na.rm = TRUE) > maximum_area_error_pct) {
   )
 }
 
+# keep the original watershed area in both the shapes and the file list
+payloads$polygon_area_km2 <- exact_area_km2
 payloads[[paste0(property_prefix, "_geometry_simplified_m")]] <- tolerance_m
 payloads[[paste0(
   property_prefix,
@@ -310,9 +311,22 @@ inventory <- st_drop_geometry(payloads) |>
   ) |>
   arrange(site_id)
 
-write_csv(manifest, file.path(output_root, "payload_manifest.csv"))
-write_csv(inventory, file.path(output_root, "site_inventory.csv"))
-write_csv(
+# keep csv as the default and use tabs when requested
+write_run_table <- function(data, csv_name, tsv_name) {
+  path <- file.path(
+    output_root,
+    if (table_format == "tsv") tsv_name else csv_name
+  )
+  if (table_format == "tsv") {
+    write_delim(data, path, delim = "\t")
+  } else {
+    write_csv(data, path)
+  }
+}
+
+write_run_table(manifest, "payload_manifest.csv", "payload_list.tsv")
+write_run_table(inventory, "site_inventory.csv", "site_inventory.tsv")
+write_run_table(
   tibble(
     metric = c(
       "accepted_sites",
@@ -339,7 +353,8 @@ write_csv(
       }
     )
   ),
-  file.path(output_root, "build_summary.csv")
+  "build_summary.csv",
+  "build_summary.tsv"
 )
 
 message("Accepted sites: ", nrow(inventory))

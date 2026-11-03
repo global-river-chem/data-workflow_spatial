@@ -73,9 +73,28 @@ current_aliases <- current |>
     nzchar(trimws(Shapefile_Name))
   ) |>
   mutate(
-    Spatial_Data_Version = suppressWarnings(as.integer(Spatial_Data_Version)),
-    site_id = paste(normalize_key(LTER), normalize_key(Shapefile_Name), sep = "__")
+    Spatial_Data_Version = suppressWarnings(as.integer(Spatial_Data_Version))
   )
+
+# use the recorded watershed ids when present and keep the old rule for earlier tables
+if ("gee_watershed_id" %in% names(current_aliases)) {
+  current_aliases$site_id <- trimws(
+    as.character(current_aliases$gee_watershed_id)
+  )
+  if (any(is.na(current_aliases$site_id) | !nzchar(current_aliases$site_id))) {
+    stop(
+      "The current site-reference table contains a blank gee_watershed_id.",
+      call. = FALSE
+    )
+  }
+} else {
+  current_aliases$site_id <- paste(
+    normalize_key(current_aliases$LTER),
+    normalize_key(current_aliases$Shapefile_Name),
+    sep = "__"
+  )
+}
+
 if (!setequal(current_aliases$site_id, watersheds$site_id)) {
   stop(
     "Current site-reference geometry IDs do not match the watershed layer.",

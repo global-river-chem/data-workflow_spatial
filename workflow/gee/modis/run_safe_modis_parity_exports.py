@@ -199,7 +199,8 @@ def load_payload_list(path: Path) -> list[Payload]:
     if not list_path.is_file():
         raise ValueError(f"Payload list does not exist: {list_path}")
     with list_path.open(newline="", encoding="utf-8-sig") as handle:
-        rows = list(csv.DictReader(handle))
+        separator = "\t" if list_path.suffix.lower() == ".tsv" else ","
+        rows = list(csv.DictReader(handle, delimiter=separator))
     required = {"payload", "path", "sites", "polygon_area_km2_sum"}
     if not rows or not required.issubset(rows[0]):
         raise ValueError("Payload list lacks one or more required columns.")
