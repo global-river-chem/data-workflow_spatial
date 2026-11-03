@@ -24,6 +24,13 @@ is a data frame saved as RDS or a CSV with the matching release table headers.
 | `--camrex-greenup-input` | Both MODIS greenup cycles, separate coverage percentages and flags, and match status |
 | `--camrex-coverage-input` | Site metadata with CAMREX coverage and corrected Ferguson notes |
 
+The current CAMREX input tables and verified Updated release are in Box under
+`SiSyn/spatial-data-extractions/spatial-data/current-updated-release/`.
+Use `camrex-bess-gpp.rds`, `camrex-modis-npp.rds`,
+`camrex-modis-greenup.rds`, and `camrex-site-metadata.rds` for the four options above.
+Use the existing combined input, site metadata, Glass file, and saved extraction
+table from the spatial-data folder. Keep these inputs and release outputs outside Git.
+
 Product tables can contain just the six CAMREX rows. Each needs `LTER`,
 `Stream_Name`, `Latitude`, and `Longitude` for the watershed checks. Include the
 corrected Ferguson metadata row when Ferguson is in the build. Ferguson land

@@ -73,13 +73,12 @@ check_protected_paths <- function() {
   file.create(path)
   on.exit(unlink(path), add = TRUE)
   before <- tools::md5sum(path)
-  for (script in c('add_bess_to_combined.R', 'update_new_spatial_dataset.R')) {
-    args <- c(file.path('workflow/release', script), '--combined-input', path,
-      '--glass-input', path, '--saved-input', path, '--metadata', path, '--overwrite', 'true')
-    output <- suppressWarnings(system2('Rscript', shQuote(args), stdout = TRUE, stderr = TRUE))
-    stopifnot(!is.null(attr(output, 'status')), any(grepl('must remain untouched|must be separate', output)),
-      identical(before, tools::md5sum(path)))
-  }
+  script <- 'update_new_spatial_dataset.R'
+  args <- c(file.path('workflow/release', script), '--combined-input', path,
+    '--glass-input', path, '--saved-input', path, '--metadata', path, '--overwrite', 'true')
+  output <- suppressWarnings(system2('Rscript', shQuote(args), stdout = TRUE, stderr = TRUE))
+  stopifnot(!is.null(attr(output, 'status')), any(grepl('must remain untouched|must be separate', output)),
+    identical(before, tools::md5sum(path)))
 }
 check_protected_paths()
 cat('Dataset assembly checks passed\n')

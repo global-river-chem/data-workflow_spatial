@@ -6,7 +6,7 @@ source(file.path(repo_root, "workflow", "lib", "workflow_helpers.R"))
 source(file.path(dirname(script), "vegetation_helpers.R"))
 args <- commandArgs(trailingOnly = TRUE)
 if ("--help" %in% args) {
-  cat("Use --watersheds FILE --id-column COLUMN --product bess|lai4g --output FILE.geojson\n")
+  cat("Use --watersheds FILE --id-column COLUMN --product bess --output FILE.geojson\n")
   quit(status = 0)
 }
 path <- require_input_file(cli_value(args, "--watersheds", required = TRUE))
@@ -14,8 +14,8 @@ id <- cli_value(args, "--id-column", required = TRUE)
 product <- cli_value(args, "--product", required = TRUE)
 output <- cli_value(args, "--output", required = TRUE)
 status_path <- cli_value(args, "--status-file")
-if (!product %in% c("bess", "lai4g")) stop("Product must be bess or lai4g")
-step <- if (product == "bess") 0.05 else 1 / 12
+if (product != "bess") stop("Product must be bess")
+step <- 0.05
 table_output <- tolower(tools::file_ext(output)) == "rds"
 if (file.exists(output)) stop("Output already exists: ", output)
 vegetation_output(dirname(output), repo_root)
