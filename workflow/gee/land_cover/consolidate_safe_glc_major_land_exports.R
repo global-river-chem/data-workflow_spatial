@@ -128,11 +128,12 @@ validate_major_rows <- function(rows, plan) {
 
   total_weights <- unique(data$total_temporal_weight)
   valid_weights <- unique(data$valid_temporal_weight)
+  # the annual weights add up to 38 years from 1985 through 2022
   invalid_weight <- length(valid_weights) != 1L ||
     !is.finite(valid_weights) ||
     valid_weights < 1L ||
-    valid_weights > 123L
-  if (!identical(total_weights, 123L) || invalid_weight) {
+    valid_weights > 38L
+  if (!identical(total_weights, 38L) || invalid_weight) {
     stop("The major-land temporal weights are invalid: ", plan$asset_id)
   }
 

@@ -63,19 +63,25 @@ Use the major-land script when an analysis only needs the dominant simplified
 class. It calculates that result in Earth Engine, so annual class tables do not
 need to be downloaded first.
 
-The calculation matches the 1900–2022 harmonized record. The 1985 map
-represents 88 years, the 1990 and 1995 maps represent five years each, the 2000
-map represents three years, and each 2001–2022 map represents one year. Source
-classes are then combined with the simplified land-cover crosswalk. Classes 0
+The calculation covers 1985–2022. The 1985 and 2000 maps each count for
+three years, the 1990 and 1995 maps each count for five, and each map
+from 2001 through 2022 counts for one. With all source maps present,
+this gives the same average as filling the years between maps with
+gradual changes in the land-cover shares.
+
+If a map has no usable pixels for a watershed, the average uses the
+available maps with their original weights. A `valid_temporal_weight`
+of 38 means every source map contributed. The calculation groups source
+classes into broader land-cover classes. Source classes 0
 and 184 are not candidates for major land cover, but they remain in the yearly
 total used to calculate fractions.
 
 If classes tie for the largest weighted fraction, the export keeps every tied
 class and marks the tie. It does not choose one arbitrarily.
 
-Use a run label reserved for major-land results, such as
-`major_land_RELEASE_NAME`. This keeps annual and major-land assets distinct
-while preserving the task names used by the current run.
+Use a new output folder and run label for the 1985–2022 calculation,
+such as `major_land_1985_2022_RELEASE_NAME`. This keeps older results
+with 1900–2022 weights from being reused.
 
 ```bash
 python3 workflow/gee/land_cover/run_safe_glc_major_land_exports.py \
@@ -83,7 +89,7 @@ python3 workflow/gee/land_cover/run_safe_glc_major_land_exports.py \
   --manifest PATH/TO/payload_manifest.csv \
   --local-point-manifest PATH/TO/glc-local-points/point_sample_manifest.csv \
   --project PROJECT \
-  --run-label major_land_RELEASE_NAME \
+  --run-label major_land_1985_2022_RELEASE_NAME \
   --method auto \
   --expected-site-count SITE_COUNT \
   --max-new-tasks 1
@@ -117,7 +123,7 @@ Rscript workflow/gee/land_cover/consolidate_safe_glc_major_land_exports.R \
   --run-root PATH/TO/major-land-run \
   --manifest PATH/TO/payload_manifest.csv \
   --project PROJECT \
-  --run-label major_land_RELEASE_NAME \
+  --run-label major_land_1985_2022_RELEASE_NAME \
   --method auto \
   --expected-site-count SITE_COUNT
 ```

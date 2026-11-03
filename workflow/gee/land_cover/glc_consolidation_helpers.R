@@ -89,7 +89,9 @@ glc_method_code <- function(method, sample_points) {
 
 glc_load_sites <- function(manifest_path) {
   manifest_path <- normalizePath(manifest_path)
-  manifest <- read.csv(
+  # read the payload list in the format indicated by its file extension
+  read_payload_list <- if (tolower(tools::file_ext(manifest_path)) == "tsv") read.delim else read.csv
+  manifest <- read_payload_list(
     manifest_path,
     stringsAsFactors = FALSE,
     check.names = FALSE

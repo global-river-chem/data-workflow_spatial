@@ -168,7 +168,8 @@ def load_sites(manifest_path: Path) -> list[Site]:
     if not manifest.is_file():
         raise ValueError(f"Payload manifest does not exist: {manifest}")
     with manifest.open(newline="", encoding="utf-8-sig") as handle:
-        rows = list(csv.DictReader(handle))
+        separator = "\t" if manifest.suffix.lower() == ".tsv" else ","
+        rows = list(csv.DictReader(handle, delimiter=separator))
     required = {"path", "sites"}
     if not rows or not required.issubset(rows[0]):
         raise ValueError("Payload manifest must contain path and sites columns.")

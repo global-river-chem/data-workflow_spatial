@@ -1,7 +1,7 @@
-"""Export the dominant GLC-FCS30D class for each watershed.
+"""export the dominant GLC-FCS30D class for each watershed
 
-The source-year weights reproduce the 1900-2022 harmonized record without
-first exporting annual land-cover tables.
+the source-year weights reproduce the 1985-2022 harmonized record without
+first exporting annual land-cover tables
 """
 
 from __future__ import annotations
@@ -17,10 +17,10 @@ MAJOR_SAMPLED_REDUCER_VERSION = "multipoint_frequency_histogram_v2"
 
 ee = glc.ee
 
-# each weight is the number of years from 1900 through 2022 represented by
-# that source map in the harmonized record
+# each weight adds up how much a source map contributes to the annual average
+# the 1985 and 2000 maps each contribute three years
 YEAR_WEIGHTS = {
-    1985: 88,
+    1985: 3,
     1990: 5,
     1995: 5,
     2000: 3,
@@ -97,7 +97,7 @@ def major_output_properties(plan: glc.TaskPlan) -> dict[str, Any]:
     result = {
         **{name: properties.get(name) for name in glc.METADATA_PROPERTIES},
         "source": "GLC_FCS30D",
-        "major_land_definition": "weighted_mean_1900_2022_equivalent",
+        "major_land_definition": "weighted_mean_1985_2022_equivalent",
         "source_year_weights": ";".join(
             f"{year}:{weight}" for year, weight in YEAR_WEIGHTS.items()
         ),
@@ -284,7 +284,7 @@ if __name__ == "__main__":
         glc.main(
             make_task=make_major_export_task,
             description=__doc__,
-            result_kind="major_land",
+            result_kind="major_land_1985_2022",
             status_label="Major-land GLC",
         )
     except Exception as exc:

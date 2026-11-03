@@ -321,13 +321,13 @@ major_row <- normalize_major_row(list(
   major_land_mean_fraction = 0.6,
   major_land_tie_count = 1,
   major_land_tie_flag = "no",
-  total_temporal_weight = 123,
-  valid_temporal_weight = 123,
+  total_temporal_weight = 38,
+  valid_temporal_weight = 38,
   extraction_method = "native_30m_exact"
 ))
 major_qa <- validate_major_rows(list(major_row), major_plan)
 stopifnot(identical(major_qa$major_land, "Forest"))
-stopifnot(major_qa$valid_temporal_weight == 123)
+stopifnot(major_qa$valid_temporal_weight == 38)
 
 tied_rows <- lapply(c("Forest", "Cropland"), function(major_land) {
   row <- major_row
@@ -411,7 +411,17 @@ python_check <- paste(
   ),
   "import run_safe_glc_fcs30d_exports as annual",
   "import run_safe_glc_major_land_exports as major",
-  "assert sum(major.YEAR_WEIGHTS.values()) == 123",
+  "assert sum(major.YEAR_WEIGHTS.values()) == 38",
+  "# check each source map against its contribution to the annual mean",
+  "years = sorted(major.YEAR_WEIGHTS)",
+  "weights = {year: 0 for year in years}",
+  "for left, right in zip(years, years[1:]):",
+  "    for year in range(left, right):",
+  "        share = (year - left) / (right - left)",
+  "        weights[left] += 1 - share",
+  "        weights[right] += share",
+  "weights[years[-1]] += 1",
+  "assert all(abs(weights[year] - major.YEAR_WEIGHTS[year]) < 1e-9 for year in years)",
   paste0(
     "assert set(major.MAPPED_CLASS_IDS) | ",
     "set(major.NON_CANDIDATE_CLASS_IDS) == set(annual.GLC_CLASSES)"
