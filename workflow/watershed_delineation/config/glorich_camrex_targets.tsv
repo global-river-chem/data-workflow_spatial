@@ -1,0 +1,7 @@
+LTER	Stream_Name	Shapefile_Name	Spatial_Data_Version	Stat_Id	HydroBASINS_ID	Latitude	Longitude	reference_area_km2	downstream_order
+Amazon	Xibeco	Xibeco	3	202004	6121066420	-2.5855	-67.1972	1152000	1
+Amazon	Tupe	Tupe	3	202006	6121065280	-2.5055	-65.8680	1236000	2
+Amazon	Jutica	Jutica	3	202009	6120295160	-3.6404	-64.2385	1737000	3
+Amazon	Anori	Anori	3	202011	6120297990	-3.8189	-61.6169	1819000	4
+Amazon	Sao Jose do Amatari	Sao_Jose_do_Amatari	3	202015	6121073370	-3.2402	-58.9882	2944000	5
+Amazon	Paura	Paura	3	202017	6120262950	-2.3962	-57.4402	4402000	6

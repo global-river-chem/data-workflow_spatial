@@ -4,6 +4,31 @@ This repository contains the Earth Engine, watershed, harmonization, and final
 spatial-data assembly used by the global river chemistry project. AppEEARS
 requests and local MODIS work stay in `lterwg-silica-spatial`.
 
+## Dataset assembly
+
+Use `workflow/release/build_spatial_dataset_files.R` to build the Updated annual
+release. For an offline build, pass `--combined-input`, `--metadata`,
+`--glass-input` (read-only), `--saved-input`, and `--output-root` pointing to
+a new folder. The builder checks source matches and writes eight product tables
+and one site metadata table. `update_new_spatial_dataset.R` applies the source
+selection rules to the combined input. The BESS and saved-result recovery scripts
+prepare upstream inputs.
+
+To include the verified CAMREX additions, supply all four inputs together. Each
+is a data frame saved as RDS or a CSV with the matching release table headers.
+
+| Option | Input table |
+| --- | --- |
+| `--camrex-bess-input` | BESS GPP values, coverage, and reliability fields |
+| `--camrex-npp-input` | MODIS NPP values, gap-filling percentages, and match status |
+| `--camrex-greenup-input` | Both MODIS greenup cycles, separate coverage percentages and flags, and match status |
+| `--camrex-coverage-input` | Site metadata with CAMREX coverage and corrected Ferguson notes |
+
+Product tables can contain just the six CAMREX rows. Each needs `LTER`,
+`Stream_Name`, `Latitude`, and `Longitude` for the watershed checks. Include the
+corrected Ferguson metadata row when Ferguson is in the build. Ferguson land
+cover and static predictors and the full CAMREX ERA5-Land record remain pending.
+
 ## Main entry points
 
 - `workflow/build_watershed_collection.R` builds the current watershed layer
@@ -37,10 +62,8 @@ cover is recovered only for observed source years; intervening years remain
 blank rather than receiving a new interpolation. Sites marked as having no
 spatial data remain in the site list with blank predictors. The metadata
 records recovered results and missing ERA5-Land values. Human impacts and
-distance to coast are excluded. Saved-data validation passed, and the spatial
-updates and metadata were synced to Drive and Box. All four recovered sites
-have ERA5-Land coverage for 2000–2025. Ferguson uses the corrected boundary;
-its other predictors remain blank until they are extracted again.
+distance to coast use verified watershed matches. Ferguson uses the corrected
+boundary; predictors without a matching extraction remain blank.
 
 Product and asset settings are under `config/`; generated exports and
 temporary files do not belong in this checkout. Write them directly to the
@@ -108,3 +131,11 @@ The final annual file is checked against every spatial site and every available
 driver year from 2002–2025. GLC-FCS30D ends in 2022 and is not extended into
 later years. Coverage reports keep source limits separate from extraction
 failures.
+
+## Offline release assembly check
+
+Run from the repository root to check source matching and file protection.
+
+```bash
+Rscript workflow/release/tests/test_dataset_assembly.R
+```

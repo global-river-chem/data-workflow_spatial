@@ -17,12 +17,21 @@ spatial_site_flags <- function(reference) {
   flags
 }
 
+# exclude retired predictors only when building the bess dataset
+bess_excluded_columns <- function(columns) {
+  grepl("^(ndvi_|pku_|vipphen_|galsp_|gimms4g_greenup_|noaa_ndvi_|bess_greenup_)",
+    columns, ignore.case = TRUE)
+}
+
 # use the chemistry sites and current reference table, not an extraction roster
 recover_saved_spatial_results <- function(modis, era5, reference, chemistry_path, data_root, class_key,
     boundary_updates_path = "", era5_updates_path = "", download_boundary = TRUE) {
   # use one table type here so column selection is the same for every caller
   modis <- as.data.frame(modis)
   era5 <- as.data.frame(era5)
+  # retired productivity and timing fields must not return through saved chunks
+  modis <- modis[, !bess_excluded_columns(names(modis)), drop = FALSE]
+  era5 <- era5[, !bess_excluded_columns(names(era5)), drop = FALSE]
   reference <- as.data.frame(reference)
   sites <- unique(as.data.frame(data.table::fread(
     chemistry_path, select = c("LTER", "Stream_Name"), showProgress = FALSE
@@ -78,7 +87,7 @@ recover_saved_spatial_results <- function(modis, era5, reference, chemistry_path
     "standard-modis-extractions-20260728-followups/extracted-data",
     "standard-modis-extractions-20260729-verified-july/coverage-2002-2025/extracted-data"
   )
-  prefixes <- c("^evapotrans_", "^npp_", "^greenup_", "^snow_")
+  prefixes <- c("^evapotrans_", "^snow_")
   for (directory in chunks) {
     files <- list.files(file.path(chunk_root, directory), pattern = "[.]csv$", full.names = TRUE)
     if (!length(files)) stop("missing reviewed MODIS source folder: ", directory)
@@ -165,6 +174,76 @@ recover_saved_spatial_results <- function(modis, era5, reference, chemistry_path
   notes[corrected & updated] <- "ERA5-Land re-extracted using verified watershed boundary; other old spatial predictors are not reused"
   list(modis = modis, era5 = era5, has_spatial = reference$Has_Spatial_Data,
     coverage = coverage, recovery_note = notes)
+}
+
+# attach checked annual bess summaries without borrowing npp or missing years
+# valid_days is the minimum daily coverage over the included watershed area
+add_bess_gpp <- function(data, annual, reference, remove_retired = TRUE) {
+  data <- as.data.frame(data)
+  annual <- as.data.frame(annual)
+  if (!all(c("LTER", "Stream_Name") %in% names(data)) ||
+      !all(c("LTER", "Stream_Name", "Shapefile_Name", "Has_Spatial_Data") %in% names(reference))) {
+    stop("BESS matching needs site names and current watershed references")
+  }
+  required <- c("LTER", "Stream_Name", "Shapefile_Name", "year", "source",
+    "gpp_gC_m2_year", "valid_days", "valid_area_fraction", "bess_trend_flag", "bess_trend_note")
+  if (!all(required %in% names(annual)) || !nrow(annual)) {
+    stop("BESS input needs annual GPP, site, watershed, source, and coverage fields")
+  }
+  numeric_fields <- c("year", "gpp_gC_m2_year", "valid_days", "valid_area_fraction")
+  if (!all(vapply(annual[numeric_fields], is.numeric, logical(1)))) {
+    stop("BESS years, values, and coverage fields must be numeric")
+  }
+  if (anyNA(annual[setdiff(required, "gpp_gC_m2_year")]) ||
+      any(annual$source != "BESSv2") || any(!annual$year %in% 1982:2022) ||
+      any(!is.finite(annual$valid_days)) || any(annual$valid_days < 0) ||
+      any(annual$valid_days != floor(annual$valid_days)) ||
+      any(!is.finite(annual$valid_area_fraction)) ||
+      any(annual$valid_area_fraction < 0 | annual$valid_area_fraction > 1)) {
+    stop("BESS input has an unexpected source, year, or coverage value")
+  }
+  first <- as.Date(paste0(annual$year, "-01-01"))
+  expected_days <- as.integer(as.Date(paste0(annual$year + 1L, "-01-01")) - first)
+  present <- !is.na(annual$gpp_gC_m2_year)
+  if (!any(present)) stop("BESS input has no reported annual GPP totals")
+  if (any(annual$valid_days > expected_days) ||
+      any(!is.finite(annual$gpp_gC_m2_year[present])) ||
+      any(annual$gpp_gC_m2_year[present] < 0) ||
+      any(present & (annual$valid_days != expected_days | annual$valid_area_fraction <= 0))) {
+    stop("BESS annual totals need finite nonnegative GPP and a full year over the reported area")
+  }
+  key <- function(x) paste(x$LTER, x$Stream_Name, sep = "\r")
+  if (anyDuplicated(key(data)) || anyDuplicated(key(reference)) ||
+      anyDuplicated(paste(key(annual), annual$year, sep = "\r"))) {
+    stop("duplicate BESS site-year or reference site")
+  }
+  rows <- match(key(annual), key(data))
+  reference_rows <- match(key(annual), key(reference))
+  if (anyNA(rows) || anyNA(reference_rows) ||
+      anyNA(reference$Shapefile_Name[reference_rows]) ||
+      any(annual$Shapefile_Name != reference$Shapefile_Name[reference_rows]) ||
+      any(reference$Has_Spatial_Data[reference_rows] != "Yes")) {
+    stop("BESS sites or watershed files do not match the current reference")
+  }
+  if (anyNA(annual[c("bess_trend_flag", "bess_trend_note")]) ||
+      any(!annual$bess_trend_flag %in% c("not_flagged", "source_zero_history"))) {
+    stop("BESS input needs the reviewed trend flags and notes")
+  }
+  excluded <- grepl("^bess_gpp_", names(data), ignore.case = TRUE)
+  if (remove_retired) excluded <- excluded | bess_excluded_columns(names(data))
+  data <- data[, !excluded, drop = FALSE]
+  # quality fields travel with each year so a partial watershed is never hidden
+  fields <- c(gC_m2_year = "gpp_gC_m2_year", valid_days = "valid_days",
+    area_fraction = "valid_area_fraction", trend_flag = "bess_trend_flag", trend_note = "bess_trend_note")
+  for (year in 1982:2022) {
+    selected <- which(annual$year == year)
+    for (field in names(fields)) {
+      column <- paste("bess_gpp", year, field, sep = "_")
+      data[[column]] <- annual[[fields[[field]]]][rep(NA_integer_, nrow(data))]
+      data[[column]][rows[selected]] <- annual[[fields[[field]]]][selected]
+    }
+  }
+  data
 }
 
 # replace annual era5 values only for the reviewed sites in this download
