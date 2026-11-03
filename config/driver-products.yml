@@ -1,3 +1,14 @@
+vegetation_decision:
+  reviewed_on: "2026-11-02"
+  scope: Updated spatial dataset
+  retained_product: gpp
+  ndvi_status: discontinued
+  replacement_greenup_status: discontinued
+  included_modis_products:
+    - npp
+    - greenup_day
+  notes: Keep BESS GPP, MODIS NPP, and both MODIS greenup cycles with their coverage fields
+
 products:
   precip:
     status: selected
@@ -15,6 +26,7 @@ products:
     daily_to_monthly: sum
     daily_to_annual: sum
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -41,6 +53,7 @@ products:
     daily_to_monthly: mean
     daily_to_annual: mean
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -67,6 +80,7 @@ products:
     daily_to_monthly: sum
     daily_to_annual: sum
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -93,6 +107,7 @@ products:
     daily_to_monthly: sum
     daily_to_annual: sum
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -112,13 +127,14 @@ products:
     type: continuous
     source_temporal_resolution: daily
     selected_spatial_resolution_m: 11100
-    native_units: fraction
+    native_units: percent
     output_units: fraction
     scale_factor: 0.01
     offset: 0
     daily_to_monthly: mean
     daily_to_annual: max
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -145,6 +161,7 @@ products:
     daily_to_monthly: mean
     daily_to_annual: max
     output_temporal_resolution:
+      - daily
       - monthly
       - annual
     available_start_date: 1950-01-02
@@ -155,8 +172,206 @@ products:
     output_name: snow_water_equiv_mm
     notes: Snow depth water equivalent converted from m to mm; annual summaries use peak watershed mean snow water equivalent
 
-  npp:
+  temp_min:
     status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: temperature_2m_min
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: K
+    output_units: degC
+    scale_factor: 1
+    offset: -273.15
+    daily_to_monthly: min
+    daily_to_annual: min
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: temp_min_degC
+    notes: Daily minimum 2 m air temperature averaged over each watershed
+
+  temp_max:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: temperature_2m_max
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: K
+    output_units: degC
+    scale_factor: 1
+    offset: -273.15
+    daily_to_monthly: max
+    daily_to_annual: max
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: temp_max_degC
+    notes: Daily maximum 2 m air temperature averaged over each watershed
+
+  runoff:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: runoff_sum
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: m
+    output_units: mm
+    scale_factor: 1000
+    offset: 0
+    daily_to_monthly: sum
+    daily_to_annual: sum
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: runoff_mm
+    notes: Daily total runoff converted to watershed-average water depth
+
+  solar_energy:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: surface_solar_radiation_downwards_sum
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: J_m2
+    output_units: MJ_m2
+    scale_factor: 0.000001
+    offset: 0
+    daily_to_monthly: sum
+    daily_to_annual: sum
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: solar_energy_mj_m2
+    notes: Daily incoming solar energy converted from joules to megajoules per square meter
+
+  soil_water_layer_1:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: volumetric_soil_water_layer_1
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: volume_fraction
+    output_units: fraction
+    scale_factor: 1
+    offset: 0
+    daily_to_monthly: mean
+    daily_to_annual: mean
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: soil_water_layer_1_fraction
+    notes: Daily mean volumetric soil water for the 0 to 7 cm layer
+
+  soil_water_layer_3:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: volumetric_soil_water_layer_3
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: volume_fraction
+    output_units: fraction
+    scale_factor: 1
+    offset: 0
+    daily_to_monthly: mean
+    daily_to_annual: mean
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: soil_water_layer_3_fraction
+    notes: Daily mean volumetric soil water for the 28 to 100 cm layer
+
+  vapor_pressure:
+    status: selected
+    source: ECMWF ERA5-Land daily aggregated
+    gee_id: ECMWF/ERA5_LAND/DAILY_AGGR
+    band: dewpoint_temperature_2m
+    product_group: era5_land
+    type: continuous
+    source_temporal_resolution: daily
+    selected_spatial_resolution_m: 11100
+    native_units: K
+    output_units: Pa
+    scale_factor: 1
+    offset: -273.15
+    daily_to_monthly: mean
+    daily_to_annual: mean
+    output_temporal_resolution:
+      - daily
+    available_start_date: 1950-01-02
+    available_end_date_checked: 2026-06-22
+    export_start_year: 2000
+    export_end_year: 2025
+    reducer: mean
+    output_name: vapor_pressure_pa
+    notes: Derived from daily mean dew point with the same equation used by the monthly model
+
+  gpp:
+    status: selected_external
+    source: BESSv2 monthly mean GPP
+    source_url: https://www.environment.snu.ac.kr/bessv2
+    access: local_netcdf
+    type: continuous
+    source_temporal_resolution: monthly
+    selected_spatial_resolution_degrees: 0.05
+    output_temporal_resolution:
+      - annual
+    export_start_year: 1982
+    export_end_year: 2022
+    native_units: gC_m2_day_scaled
+    output_units: gC_m2_year
+    scale_factor: 0.01
+    fill_value: -9999
+    monthly_to_annual: calendar_day_weighted_sum
+    reducer: watershed_overlap_weighted_mean
+    available_start_date: 1982-01-01
+    available_end_date_checked: 2022-12-31
+    output_name: bess_gpp_gC_m2_year
+    notes: Multiply the mean daily GPP by the days in each month before summing. Require all twelve months over the same cells and at least 80 percent watershed coverage. Keep original values and trend flags
+
+  npp:
+    status: selected_saved
     source: MODIS annual NPP
     gee_id: MODIS/061/MOD17A3HGF
     band: Npp
@@ -170,15 +385,15 @@ products:
     available_start_date: 2001-01-01
     available_end_date_checked: 2025-01-01
     export_start_year: 2001
-    export_end_year: 2024
+    export_end_year: 2025
     scale_factor: 0.0001
     offset: 0
     reducer: mean
     output_name: npp_kgC_m2_year
-    notes: Annual MODIS NPP remains the selected GEE product
+    notes: Use verified AppEEARS NPP results in the Updated dataset
 
   greenup_day:
-    status: selected
+    status: selected_saved
     source: MODIS land cover dynamics
     gee_id: MODIS/061/MCD12Q2
     band: Greenup_1
@@ -191,10 +406,10 @@ products:
     available_start_date: 2001-01-01
     available_end_date_checked: 2024-01-01
     export_start_year: 2001
-    export_end_year: 2023
+    export_end_year: 2024
     reducer: mean
     output_name: greenup_day
-    notes: Needs date-to-day-of-year handling before final export; confirm final available year in Colab before full pull
+    notes: Keep both AppEEARS greenup cycles and their calendar dates. Use separate coverage fields where available
 
   land_cover:
     status: selected

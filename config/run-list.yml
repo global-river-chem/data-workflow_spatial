@@ -13,16 +13,46 @@ launch:
 
 outputs:
   current_timing:
+    - daily
     - monthly
     - monthly_by_year
     - annual
     - static
   later_timing:
-    - daily
     - weekly
-  notes: Daily or weekly outputs can be added later from daily source products when needed
+  notes: Daily ERA5-Land is available for separate analyses. The annual run is the default
 
 runs:
+  era5_land_daily_spatial_stats_2000_2025:
+    mode: era5_land
+    products:
+      - precip
+      - temp
+      - temp_min
+      - temp_max
+      - evapotrans
+      - potential_evap
+      - snow_cover
+      - snow_water_equiv
+      - runoff
+      - solar_energy
+      - soil_water_layer_1
+      - soil_water_layer_3
+      - vapor_pressure
+    spatial_statistics:
+      - mean
+      - median
+      - min
+      - max
+      - sd
+    timing: daily
+    start_year: 2000
+    end_year: 2025
+    months: all
+    run_groups: all
+    launch_export: false
+    notes: Keep one row per watershed and day with five within-watershed statistics per driver
+
   era5_land_annual_full_2000_2025:
     mode: era5_land
     products:
@@ -54,18 +84,6 @@ runs:
     run_groups: all
     launch_export: false
     notes: Shared comparison window for ERA5-Land, MODIS, and GLC_FCS30D
-
-  modis_annual_overlap_2001_2022:
-    mode: single_product
-    products:
-      - npp
-      - greenup_day
-    timing: annual
-    start_year: 2001
-    end_year: 2022
-    run_groups: all
-    launch_export: false
-    notes: Annual MODIS pull for the same shared window
 
   land_cover_annual_overlap_2001_2022:
     mode: single_product
@@ -146,17 +164,6 @@ runs:
     run_groups: all
     launch_export: false
     notes: Monthly ERA5-Land, bundled by year so each task writes 12 months for one site group
-
-  modis_annual_full:
-    mode: single_product
-    products:
-      - npp
-      - greenup_day
-    timing: annual
-    start_year: 2001
-    end_year: 2023
-    run_groups: all
-    launch_export: false
 
   static_context_full:
     mode: single_product

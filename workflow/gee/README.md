@@ -16,10 +16,10 @@ Reuse a prior GEE result only when the current site points to the same
 watershed file and spatial-data version; build the remaining target set with
 `build_incremental_targets.R`.
 
-Use AppEEARS for MODIS ET, NPP, and green-up when its area summary tables are
-available. Use the checked GEE parity workflow for the bit-packed MOD10A2 snow
-product and for missing AppEEARS summaries. Do not mix the two sources within
-one product without first checking an overlap set.
+The Updated annual release uses ERA5-Land for climate, evapotranspiration,
+and snow. It includes BESS GPP from local files and MODIS NPP and greenup
+from checked AppEEARS results. See the main README for release inputs and
+the BESS workflow. Daily ERA5-Land is available for separate analyses.
 
 ## Standard workflow
 
@@ -59,7 +59,7 @@ Engine computations.
 | Exclude accepted prior coverage | `build_incremental_targets.R` |
 | ERA5-Land | `era5_land/run_safe_era5_land_exports.py` |
 | Build local GLC sample points | `land_cover/build_local_glc_sample_points.R` |
-| Download checked daily ERA5 statistics | `era5_land/download_daily_era5_land_assets.R` |
+| Download checked daily per-watershed ERA5 statistics | `era5_land/download_daily_era5_land_assets.R` |
 | Monthly or weekly ERA5 summaries | `era5_land/aggregate_daily_era5_land.R` |
 | Finish missing ERA5 assets | `era5_land/finish_missing_era5_land_assets.py` |
 | GLC-FCS30D land cover | `land_cover/run_safe_glc_fcs30d_exports.py` |

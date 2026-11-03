@@ -4,6 +4,72 @@ This repository contains the Earth Engine, watershed, harmonization, and final
 spatial-data assembly used by the global river chemistry project. AppEEARS
 requests and local MODIS work stay in `lterwg-silica-spatial`.
 
+BESSv2 GPP is the gross primary productivity source in the updated dataset.
+The verified 1982–2022 release has 42,886 annual BESS values across 1,046 sites.
+It retains original values, including zeros, along with coverage and trend flags.
+The new NDVI and replacement greenup effort is discontinued. No further pilots, full
+downloads, or additions of those predictors are planned.
+
+The GLASS file dated `20261015` remains unchanged. The updated file dated
+`20261028` uses ERA5-Land for overlapping climate, ET, and snow products, and
+includes BESS GPP, MODIS NPP, MODIS greenup, and verified saved human and river results.
+
+The completed vegetation pilots are outside the Updated release.
+
+## Product information
+
+### Glass dataset
+
+| Data product | Variable | Resolution and source details | Period or timing | Units and summary |
+|---|---|---|---|---|
+| MODIS Terra MOD16A2GF v6.1 | Evapotranspiration | NASA LP DAAC; 500 m; gap-filled eight-day ET composites, accessed through AppEEARS | 2001-2025; annual totals and monthly climatology | kg water/m² (equivalent to mm); mean across watershed pixels; composite totals distributed to days, then summed |
+| MODIS Terra MOD17A3HGF v6.1 | Net primary production | NASA LP DAAC; 500 m; annual gap-filled NPP, accessed through AppEEARS | 2001-2025; annual | kg C/m²/year; mean annual NPP across valid watershed pixels; invalid values excluded |
+| MODIS Terra MOD10A2 v6.1 | Snow cover | NASA NSIDC DAAC; 500 m; eight-day maximum snow extent and daily snow chronology bits | 2002-2025; annual and monthly climatology | Days with snow; annual maximum watershed snow-area fraction; monthly mean snow-area fraction |
+| MODIS Terra and Aqua MCD12Q2 v6.1 | Greenup dates | NASA LP DAAC; 500 m; annual land-surface phenology; Greenup_1 and Greenup_2 mark 15% of seasonal EVI2 amplitude | 2001-2024; up to two cycles each year | Calendar dates; watershed mean of valid pixel dates, rounded down to a whole day; cycles kept separately |
+| GPCP Monthly Precipitation CDR v2.3 | Precipitation | NOAA NCEI; merged satellite and rain-gauge observations; monthly 2.5° grid; doi:10.7289/V56971M6 | 1979-2025 in this dataset; annual means and monthly climatology | mm/day; watershed mean of grid cells, then mean of monthly rates; annual values are mean daily rates, not totals |
+| GHCN_CAMS Gridded 2 m Temperature (Land) | Air temperature | Global Historical Climatology Network and Climate Anomaly Monitoring System; NOAA PSL; 0.5° grid; monthly 2 m land-air temperature | 1948-2025 in this dataset; monthly inputs, annual means, and monthly climatology | °C; watershed mean of monthly grid cells, then mean across months. Original source: psl.noaa.gov/data/gridded/data.ghcncams.html |
+| WorldClim v2.1 | Elevation | Global elevation grid wc2.1_30s_elev.tif; 30 arcseconds (about 1 km at the equator) | Static | m above sea level; watershed mean, median, minimum, and maximum |
+|  | Basin slope | Slope calculated from the WorldClim elevation grid using terra terrain; surrounding cells retained for calculation | Static | Degrees; watershed mean, median, minimum, and maximum |
+| Global Lithological Map (GLiM) | Lithology | Global rock-type map; 0.5-degree raster glim_wgs84_0point5deg.txt.asc; source classes grouped into broader rock types | Static | Dominant rock class and fractions of watershed pixels in each rock group |
+| OpenLandMap USDA soil taxonomy | Soil orders | 250 m soil-suborder grid TAXOUSDA_250m_suborder_classes.tif; suborders grouped into USDA soil orders using the classification lookup table | Static | Dominant soil order and fractions of watershed pixels in each soil order |
+| GlobPermafrost PERPROB (Obu et al., 2018) | Permafrost occurrence probability | AWI / PANGAEA Northern Hemisphere permafrost map; 1 km grid; doi:10.1594/PANGAEA.888600 | Static; modeled for 2000-2016; Northern Hemisphere land north of 25°N | Fraction (0-1); watershed mean, median, minimum, maximum. Original values unchanged; legacy _m suffix does not mean meters |
+| Global Land Cover with Fine Classification System (GLC-FCS30D) | Land cover | Landsat-based global land-cover maps; 30 m; detailed source classes combined into eleven land-cover groups | 1985-2022; observed source years | Percent of watershed area in each of eleven land-cover groups; years without source observations remain missing |
+
+### Updated dataset
+
+| Data product | Variable | Resolution and source details | Period or timing | Units and summary |
+|---|---|---|---|---|
+| BESSv2 | Annual GPP | 0.05 degrees; monthly NetCDF | 1982-2022; annual | g C/m²/year; retain valid days, area fraction, and source-zero flags |
+| ERA5-Land | Precipitation | About 11.1 km; daily aggregates | 2000-2025; annual | mm; annual sum, watershed mean |
+|  | Mean air temperature | About 11.1 km; daily aggregates | 2000-2025; annual | °C; annual and watershed mean |
+|  | Evapotranspiration | About 11.1 km; daily aggregates | 2000-2025; annual | mm; sign corrected annual sum |
+|  | Potential evaporation | About 11.1 km; daily aggregates | 2000-2025; annual | mm; sign corrected annual sum |
+|  | Snow cover | About 11.1 km; daily aggregates | 2000-2025; annual | Fraction; annual maximum image, watershed mean |
+|  | Snow water equivalent | About 11.1 km; daily aggregates | 2000-2025; annual | mm; annual peak watershed mean |
+| LandScan Global | Ambient population | Oak Ridge National Laboratory; about 1 km; annual ambient population grids | 2000-2024; annual | People and people/km²; retain data coverage fractions |
+| Global Dam Watch v1.0 | Dams | Global Dam Watch barrier locations; counts and capacity attributes within each watershed | 2024 release; static | Count, density per 1,000 km², storage in million m³, hydropower in MW; retain record counts |
+| NPKGRIDS | Fertilizer application index | About 5.6 km; crop-rate layers | Circa 2020; static | N, P₂O₅, K₂O rate-sum indices in kg/ha; not total fertilizer mass; retain crop-layer counts |
+| HydroWASTE v1.0 | Wastewater treatment plants | HydroWASTE wastewater-treatment plant locations and attributes within each watershed | 2022 release; static | Counts, density, population served, discharge in m³/day, treatment classes; retain record counts |
+| HydroRIVERS routing | Distance to coast and outlet | HydroRIVERS river reaches; downstream network distances from the matched reach to outlet and ocean | Static | km; retain match status and routing diagnostics; ocean distance missing for closed basins |
+| MODIS Terra MOD17A3HGF v6.1 | Net primary production | NASA LP DAAC; 500 m; annual gap-filled NPP, accessed through AppEEARS | 2001-2025; annual | kg C/m²/year; mean annual NPP across valid watershed pixels; invalid values excluded |
+| MODIS Terra and Aqua MCD12Q2 v6.1 | Greenup dates | NASA LP DAAC; 500 m; annual land-surface phenology; Greenup_1 and Greenup_2 mark 15% of seasonal EVI2 amplitude | 2001-2024; up to two cycles each year | Calendar dates; watershed mean of valid pixel dates, rounded down to a whole day; cycles kept separately |
+| Global Land Cover with Fine Classification System (GLC-FCS30D) | Land cover | Landsat-based global land-cover maps; 30 m; detailed source classes combined into eleven land-cover groups | 1985-2022; observed source years | Percent of watershed area in each of eleven land-cover groups; years without source observations remain missing |
+| WorldClim v2.1 | Elevation | Global elevation grid wc2.1_30s_elev.tif; 30 arcseconds (about 1 km at the equator) | Static | m above sea level; watershed mean, median, minimum, and maximum |
+|  | Basin slope | Slope calculated from the WorldClim elevation grid using terra terrain; surrounding cells retained for calculation | Static | Degrees; watershed mean, median, minimum, and maximum |
+| Global Lithological Map (GLiM) | Lithology | Global rock-type map; 0.5-degree raster glim_wgs84_0point5deg.txt.asc; source classes grouped into broader rock types | Static | Dominant rock class and fractions of watershed pixels in each rock group |
+| OpenLandMap USDA soil taxonomy | Soil orders | 250 m soil-suborder grid TAXOUSDA_250m_suborder_classes.tif; suborders grouped into USDA soil orders using the classification lookup table | Static | Dominant soil order and fractions of watershed pixels in each soil order |
+| GlobPermafrost PERPROB (Obu et al., 2018) | Permafrost occurrence probability | AWI / PANGAEA Northern Hemisphere permafrost map; 1 km grid; doi:10.1594/PANGAEA.888600 | Static; modeled for 2000-2016; Northern Hemisphere land north of 25°N | Fraction (0-1); watershed mean, median, minimum, maximum. Original values unchanged; legacy _m suffix does not mean meters |
+
+The GLASS file dated `20261015` remains unchanged (1,111 sites, 942 columns).
+It already contains some ERA5-Land and GLC additions; those saved columns remain intact.
+The Updated annual release has 1,170 sites. ERA5-Land replaces
+the overlapping climate, MODIS ET, and MODIS snow fields. MODIS NPP and greenup
+are included alongside BESS GPP. New NDVI and replacement greenup work remains closed.
+GHSL has no saved results in the checked input and is not included.
+Human-impact results match 881 current watersheds. MODIS NPP has values at 953 sites,
+greenup at 959, and ocean distance at 872. Keep source coverage, record counts,
+routing status, and the original BESS values and reliability flags. Missing matches stay blank.
+
 ## Dataset assembly
 
 Use `workflow/release/build_spatial_dataset_files.R` to build the Updated annual
@@ -45,6 +111,7 @@ cover and static predictors and the full CAMREX ERA5-Land record remain pending.
   files under its `config/` folder.
 - `workflow/gee/` contains the safe ERA5-Land, human-impact, and GLC-FCS30D
   workflows.
+- `workflow/vegetation/` reproduces the BESSv2 annual GPP results.
 - `workflow/appeears/` groups reviewed area requests and assembles checked
   MODIS summary tables.
 - `workflow/aurora/stage_selected_watersheds.R` prepares checked watershed
@@ -180,7 +247,12 @@ The [corrected Ferguson boundary on Drive](https://drive.google.com/file/d/1ICyb
 
 When Ferguson is included, the watershed builder and spatial release download this file from shared Drive and keep it in R's user cache outside the repository. The first download requires access through `googledrive`. Later runs use the cached file. Both scripts also accept `--boundary-updates` followed by the path to the Box copy; `SISYN_BOUNDARY_UPDATES` provides the same setting. `--download-boundary false` allows cached or explicitly supplied files only. Every load checks the file against the reviewed checksum. If the file is missing, changed, or cannot be downloaded, the run stops instead of using the old polygon.
 
-The spatial release does not reuse Ferguson's old predictors, because they describe the oversized watershed. ERA5-Land for 2000–2025 has been recovered using the corrected boundary. Other predictors stay blank with a metadata note until they are extracted again. Loading this boundary does not start any extraction or upload.
+The updated annual release has Ferguson's ERA5-Land values for 2000–2025 and
+BESS GPP for 1982–2022. The MODIS vegetation, human-impact, and river-routing
+results match the corrected watershed name and area. There are 24 annual NPP
+values and 25 greenup dates across two cycles. Land cover and the static
+terrain, lithology, soil, and permafrost predictors remain blank. The release
+metadata records these gaps.
 
 ## WRTDS site audit
 
@@ -222,10 +294,15 @@ driver year from 2002–2025. GLC-FCS30D ends in 2022 and is not extended into
 later years. Coverage reports keep source limits separate from extraction
 failures.
 
-## Offline release assembly check
+## Offline checks
 
-Run from the repository root to check source matching and file protection.
+Run these from the repository root; they do not submit Earth Engine jobs:
 
 ```bash
+Rscript workflow/check_product_settings.R
 Rscript workflow/release/tests/test_dataset_assembly.R
+Rscript workflow/gee/tests/test_gee_workflows.R
+Rscript workflow/vegetation/tests/test_bess.R
 ```
+
+The BESS checks require the R packages listed under Annual BESS GPP.

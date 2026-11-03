@@ -30,6 +30,13 @@ continuous_required <- c(
 )
 
 missing_fields <- function(product) {
+  # external bess files have degree grids and do not need a gee collection
+  if (identical(product$status, "selected_external")) {
+    required <- c(setdiff(base_required, "gee_id"), "source_url", "access",
+      "selected_spatial_resolution_degrees", "native_units", "output_units",
+      "scale_factor", "fill_value", "monthly_to_annual", "reducer")
+    return(sort(setdiff(required, names(product))))
+  }
   required <- base_required
 
   if (identical(product$type, "continuous")) {
