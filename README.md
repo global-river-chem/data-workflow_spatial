@@ -88,6 +88,70 @@ or breaks the expected downstream nesting order. It writes each shape under
 the `data_release_3` folder expected by the watershed builder and records the
 site-reference fields and checks in `glorich_recovery_qa.tsv`.
 
+## Annual BESS GPP
+
+Install the R packages `sf`, `terra`, `jsonlite`, `ncdf4`, and `googledrive`.
+Use reviewed watershed boundaries and keep downloaded files outside this repo.
+
+The BESS scripts use monthly NetCDF files to build annual GPP for 1982–2022.
+They retain the source files, check each file, and multiply monthly mean daily GPP by
+calendar days before summing. Annual totals use the same cells for all twelve
+months and remain missing below 80% watershed coverage. Zeros are valid GPP.
+The source uses a special value for missing cells and provides no separate quality field.
+
+For all sites, `prepare_bess_roster.R` matches site names to reviewed watershed
+shapes and uses the corrected Ferguson boundary. It keeps sites without
+watershed shapes in `site-roster.rds`. Put the inputs on the computer running
+the extraction so the job can read them even if it cannot open Box files.
+
+```bash
+Rscript workflow/vegetation/prepare_bess_roster.R \
+  --metadata /path/to/combined-metadata.csv \
+  --watersheds /path/to/reviewed-watersheds.gpkg \
+  --shapefile-root /path/to/silica-shapefiles \
+  --boundary-updates /path/to/ferguson_611026_verified.gpkg \
+  --output-dir /path/to/bess-full/inputs
+
+Rscript workflow/vegetation/prepare_vegetation_points.R \
+  --watersheds /path/to/bess-full/inputs/watersheds.gpkg --id-column site \
+  --product bess --output /path/to/bess-full/inputs/bess-points.rds
+
+Rscript workflow/vegetation/extract_bess_gpp.R --mode monthly \
+  --points /path/to/bess-full/inputs/bess-points.rds \
+  --site-roster /path/to/bess-full/inputs/site-roster.rds \
+  --years 1982:2022 --drive-folder 1ZSBnVT7IoeVh5Oj6zRwKjRRoY2qpVhJH \
+  --auth-cache /path/to/existing-drive-login.rds --output-dir /path/to/bess-full
+```
+
+The RDS stores cell locations and weights in a table, which uses less
+memory than storing each location as a map point. Add `--status-file FILE` to record progress.
+Monthly mode accepts `--test` to check one real file and stop before completing
+an annual total. It checks all requested months before starting and saves after
+each month in `monthly-checkpoint.rds`. `annual-gpp.rds` expands shared
+watersheds back to the original spatial site names for release review. Sites
+without spatial data stay in the saved roster and remain missing in the
+combined release. The full source transfer is about 2.45 GB across 492 files.
+The annual results include `bess_trend_flag` and `bess_trend_note`.
+`source_zero_history` flags all years for the reviewed Canadian Weasel River
+(`sisyn_canada_eccc_wsc_nw10uf0003`) and Very River
+(`sisyn_canada_eccc_wsc_nw10vk0002`) watersheds. Exclude those histories from
+vegetation trend interpretation; their original GPP values remain unchanged.
+`not_flagged` means no issue was identified by this specific review, rather
+than independent validation of the site's trend.
+To add the reviewed RDS results to an existing combined spatial CSV, use
+`Rscript workflow/release/add_bess_to_combined.R --combined-input UPDATED_FILE --glass-input GLASS_FILE --bess-input ANNUAL_RDS --site-reference ROSTER_RDS --overwrite true`.
+This BESS merge checks every added value after writing, excludes discontinued
+NDVI and replacement greenup fields, and preserves MODIS NPP, MODIS greenup,
+other predictors, and site order.
+It can refresh an existing BESS version with the same reviewed source values.
+Never use it to overwrite the separate AppEEARS/GLASS version.
+Each year gains GPP, valid days, area fraction, trend flag, and
+trend note columns under `bess_gpp_YEAR_`. Sites without BESS remain blank.
+Keep a frozen runtime copy for long jobs so later code edits do not change
+the running extraction.
+
+Run the offline checks with `Rscript workflow/vegetation/tests/test_bess.R`.
+
 ## Reviewed StreamStats recovery
 
 The StreamStats recovery accepts watersheds only for the eight sites in the
