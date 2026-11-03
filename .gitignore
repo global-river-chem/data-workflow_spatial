@@ -5,4 +5,8 @@
 __pycache__/
 .ipynb_checkpoints/
 *.pyc
+~$*.docx
+~$*.pptx
+/deliverables/
+/data/
 workflow/watershed_delineation/config/verified_boundary_updates.gpkg
